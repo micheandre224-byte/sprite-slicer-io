@@ -40,3 +40,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 Created with ❤️ by **Michel André L. Da Silva** with the support of **Gemini AI**.
+
+Link:[https://ai.studio/apps/6038d0db-5663-4006-8ff3-f7234d67146e]
