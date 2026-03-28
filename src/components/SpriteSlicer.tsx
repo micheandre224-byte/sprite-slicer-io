@@ -159,30 +159,56 @@ export default function SpriteSlicer() {
   // Undo/Redo state
   const [history, setHistory] = useState<{ rects: Rect[], customOrder: number[], disabledIndices: Set<number> }[]>([]);
   const [redoStack, setRedoStack] = useState<{ rects: Rect[], customOrder: number[], disabledIndices: Set<number> }[]>([]);
+  const [showSmartTips, setShowSmartTips] = useState(true);
+  const [showSmartTipsModal, setShowSmartTipsModal] = useState(false);
+  const [activeHint, setActiveHint] = useState<string | null>(null);
 
-  const [showMobileWarning, setShowMobileWarning] = useState(false);
-  const [dismissedWarning, setDismissedWarning] = useState(false);
+  // Missing state variables
+  const [language, setLanguage] = useState<Language>('pt');
   const [isDirty, setIsDirty] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState(0);
-  const [language, setLanguage] = useState<Language>('pt');
   const [showLanguageModal, setShowLanguageModal] = useState(false);
-  const [isDraggingFile, setIsDraggingFile] = useState(false);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
-  const [previewBg, setPreviewBg] = useState<'checker' | 'white' | 'black' | 'green' | 'magenta'>('checker');
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [dismissedWarning, setDismissedWarning] = useState(false);
+  const [showMobileWarning, setShowMobileWarning] = useState(false);
+  const [onionSkin, setOnionSkin] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [exportTransparent, setExportTransparent] = useState(true);
   const [exportBgColor, setExportBgColor] = useState('#ffffff');
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const [previewBg, setPreviewBg] = useState('#ffffff');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // --- Smart Tips Logic ---
+  useEffect(() => {
+    if (!showSmartTips || !imageSrc) return;
+
+    // Hint: Many sprites detected
+    if (rects.length > 50 && !activeHint) {
+      setActiveHint(translations[language].hints.multipleCharacters);
+    }
+
+    // Hint: Transparency issue (if background is opaque and no sprites detected)
+    if (rects.length === 0 && bgColor[3] > 200 && !activeHint) {
+      setActiveHint(translations[language].hints.transparencyIssue);
+    }
+
+    // Hint: Reorder frames (if multiple frames and haven't reordered yet)
+    const isDefaultOrder = customOrder.length > 1 && customOrder.every((val, index) => val === index);
+    if (customOrder.length > 1 && isDefaultOrder && !activeHint) {
+      setActiveHint(translations[language].hints.reorderFrames);
+    }
+  }, [rects.length, bgColor, imageSrc, imageElement, showSmartTips, language, customOrder]);
 
   const pushToHistory = useCallback(() => {
     setHistory(prev => [...prev, { 
       rects: [...rects], 
       customOrder: [...customOrder], 
-      disabledIndices: new Set(disabledIndices) 
+      disabledIndices: new Set(disabledIndices)
     }]);
     setRedoStack([]);
   }, [rects, customOrder, disabledIndices]);
@@ -195,7 +221,7 @@ export default function SpriteSlicer() {
     setRedoStack(prev => [...prev, { 
       rects: [...rects], 
       customOrder: [...customOrder], 
-      disabledIndices: new Set(disabledIndices) 
+      disabledIndices: new Set(disabledIndices)
     }]);
     
     // Restore previous
@@ -215,7 +241,7 @@ export default function SpriteSlicer() {
     setHistory(prev => [...prev, { 
       rects: [...rects], 
       customOrder: [...customOrder], 
-      disabledIndices: new Set(disabledIndices) 
+      disabledIndices: new Set(disabledIndices)
     }]);
     
     // Restore next
@@ -902,16 +928,42 @@ export default function SpriteSlicer() {
     canvas.height = rect.h;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(
-      imageElement,
-      rect.x, rect.y, rect.w, rect.h,
-      0, 0, rect.w, rect.h
-    );
-    
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    removeBackground(imageData, bgColor, tolerance);
-    ctx.putImageData(imageData, 0, 0);
-  }, [currentFrame, imageElement, playableRects, bgColor, tolerance]);
+
+    // Helper to draw a frame with background removal
+    const drawFrame = (frameRect: Rect, alpha: number = 1.0) => {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = frameRect.w;
+      tempCanvas.height = frameRect.h;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) return;
+
+      tempCtx.drawImage(
+        imageElement,
+        frameRect.x, frameRect.y, frameRect.w, frameRect.h,
+        0, 0, frameRect.w, frameRect.h
+      );
+
+      const imageData = tempCtx.getImageData(0, 0, frameRect.w, frameRect.h);
+      removeBackground(imageData, bgColor, tolerance);
+      tempCtx.putImageData(imageData, 0, 0);
+
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(tempCanvas, 0, 0, rect.w, rect.h);
+      ctx.globalAlpha = 1.0;
+    };
+
+    // Onion Skin: Draw previous frame semi-transparently
+    if (onionSkin && playableRects.length > 1) {
+      const prevFrameIdx = (currentFrame - 1 + playableRects.length) % playableRects.length;
+      const prevRect = playableRects[prevFrameIdx];
+      if (prevRect) {
+        drawFrame(prevRect, 0.3);
+      }
+    }
+
+    // Draw current frame
+    drawFrame(rect, 1.0);
+  }, [currentFrame, imageElement, playableRects, bgColor, tolerance, onionSkin]);
 
   // --- Zoom and Pan Handlers ---
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
@@ -2219,6 +2271,40 @@ export default function SpriteSlicer() {
 
       {/* Main Area: Canvas */}
       <div className="flex-1 flex flex-col bg-neutral-950 relative overflow-hidden">
+        {/* Smart Tips Button */}
+        {showSmartTips && (
+          <div className="absolute top-20 left-4 z-50">
+            <button 
+              onClick={() => setShowSmartTipsModal(true)}
+              className="bg-neutral-800/80 backdrop-blur text-neutral-300 p-2 rounded-full shadow-lg border border-neutral-700 hover:bg-neutral-700 transition-colors"
+              title={t.help}
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {/* Smart Tips Modal */}
+        {showSmartTipsModal && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-xl max-w-sm w-full shadow-2xl">
+              <h3 className="text-lg font-bold text-white mb-4">{t.help}</h3>
+              <div className="space-y-4 text-sm text-neutral-300">
+                {rects.length > 50 && <p>• {t.hints.multipleCharacters}</p>}
+                {rects.length === 0 && bgColor[3] > 200 && <p>• {t.hints.transparencyIssue}</p>}
+                {customOrder.length > 1 && customOrder.every((val, index) => val === index) && <p>• {t.hints.reorderFrames}</p>}
+                {rects.length <= 50 && rects.length > 0 && bgColor[3] <= 200 && customOrder.length <= 1 && <p>{t.noTipsAvailable}</p>}
+              </div>
+              <button 
+                onClick={() => setShowSmartTipsModal(false)}
+                className="mt-6 w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg font-bold"
+              >
+                {t.close}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Top Toolbar */}
         <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start pointer-events-none">
           <div className="bg-neutral-900/80 backdrop-blur border border-neutral-800 px-3 py-1.5 rounded text-xs flex items-center gap-2 pointer-events-auto">
@@ -2424,21 +2510,32 @@ export default function SpriteSlicer() {
           <canvas ref={previewCanvasRef} className="relative z-10" style={{ imageRendering: 'pixelated', transform: 'scale(2)' }} />
           
           {/* Preview BG Switcher */}
-          <div className="absolute top-2 right-2 z-20 flex gap-1 bg-black/50 p-1 rounded-lg backdrop-blur-sm border border-white/10">
-            {(['checker', 'white', 'black', 'green', 'magenta'] as const).map((bg) => (
-              <button
-                key={bg}
-                onClick={() => setPreviewBg(bg)}
-                className={`w-4 h-4 rounded-sm border ${previewBg === bg ? 'border-emerald-500 scale-110' : 'border-white/20'} transition-all`}
-                style={{ 
-                  background: bg === 'checker' ? "url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkYGAQYcAP3uCTZhw1gGGYhAGBZIA/ENBwGzVgwGEYhAGBZIA/ENBwGwB5EwM/w1b3XwAAAABJRU5ErkJggg==')" :
-                             bg === 'white' ? '#fff' :
-                             bg === 'black' ? '#000' :
-                             bg === 'green' ? '#00ff00' : '#ff00ff'
-                }}
-                title={t[bg as keyof typeof t] as string}
-              />
-            ))}
+          <div className="absolute top-2 right-2 z-20 flex flex-col gap-2">
+            <div className="flex gap-1 bg-black/50 p-1 rounded-lg backdrop-blur-sm border border-white/10">
+              {(['checker', 'white', 'black', 'green', 'magenta'] as const).map((bg) => (
+                <button
+                  key={bg}
+                  onClick={() => setPreviewBg(bg)}
+                  className={`w-4 h-4 rounded-sm border ${previewBg === bg ? 'border-emerald-500 scale-110' : 'border-white/20'} transition-all`}
+                  style={{ 
+                    background: bg === 'checker' ? "url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkYGAQYcAP3uCTZhw1gGGYhAGBZIA/ENBwGzVgwGEYhAGBZIA/ENBwGwB5EwM/w1b3XwAAAABJRU5ErkJggg==')" :
+                                bg === 'white' ? '#fff' :
+                                bg === 'black' ? '#000' :
+                                bg === 'green' ? '#00ff00' : '#ff00ff'
+                  }}
+                  title={t[bg as keyof typeof t] as string}
+                />
+              ))}
+            </div>
+            
+            <button 
+              onClick={() => setOnionSkin(!onionSkin)}
+              className={`flex items-center justify-center gap-2 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${onionSkin ? 'bg-emerald-500 text-black border-emerald-400' : 'bg-black/50 text-neutral-400 border-white/10 hover:text-white'}`}
+              title={t.onionSkin}
+            >
+              <Layers className="w-3 h-3" />
+              {t.onionSkin}
+            </button>
           </div>
         </div>
 
