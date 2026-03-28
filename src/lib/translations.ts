@@ -21,7 +21,8 @@ export const translations = {
     splitInto: "Dividir em {n} Sprites",
     smartSplit: "Corte Inteligente",
     refineSelection: "Refinar Seleção",
-    spritesDetected: "{n} Sprites Detectados",
+    spritesDetected: "{active}/{total} Sprites Ativos",
+    removeDisabled: "Remover Desativados",
     detecting: "Detectando...",
     zoom: "Zoom",
     pan: "Mover",
@@ -91,7 +92,7 @@ export const translations = {
       },
       step2: {
         title: "2. Detecção Automática",
-        content: "Ajuste a 'Tolerância' e 'Distância' para que o sistema encontre os sprites sozinho."
+        content: "Ajuste 'Tolerância', 'Distância' e 'Tamanho Mínimo' para ignorar sujeiras e focar nos sprites reais."
       },
       step3: {
         title: "3. Entenda as Cores",
@@ -175,7 +176,8 @@ export const translations = {
     splitInto: "Split into {n} Sprites",
     smartSplit: "Smart Split",
     refineSelection: "Refine Selection",
-    spritesDetected: "{n} Sprites Detected",
+    spritesDetected: "{active}/{total} Active Sprites",
+    removeDisabled: "Remove Disabled",
     detecting: "Detecting...",
     zoom: "Zoom",
     pan: "Pan",
@@ -245,7 +247,7 @@ export const translations = {
       },
       step2: {
         title: "2. Auto Detection",
-        content: "Adjust 'Tolerance' and 'Distance' so the system finds sprites automatically."
+        content: "Adjust 'Tolerance', 'Distance', and 'Min Size' to ignore artifacts and find the real sprites."
       },
       step3: {
         title: "3. Understand Colors",
@@ -329,7 +331,8 @@ export const translations = {
     splitInto: "Dividir en {n} Sprites",
     smartSplit: "Corte Inteligente",
     refineSelection: "Refinar Selección",
-    spritesDetected: "{n} Sprites Detectados",
+    spritesDetected: "{active}/{total} Sprites Activos",
+    removeDisabled: "Eliminar Desactivados",
     detecting: "Detectando...",
     zoom: "Zoom",
     pan: "Mover",
@@ -399,7 +402,7 @@ export const translations = {
       },
       step2: {
         title: "2. Detección Automática",
-        content: "Ajusta 'Tolerancia' y 'Distancia' para que el sistema encuentre los sprites solo."
+        content: "Ajusta 'Tolerancia', 'Distancia' y 'Tamaño Mínimo' para ignorar artefactos y encontrar los sprites reales."
       },
       step3: {
         title: "3. Entiende los Colores",

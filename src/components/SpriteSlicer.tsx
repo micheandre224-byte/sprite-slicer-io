@@ -272,9 +272,48 @@ export default function SpriteSlicer() {
   }, [imageSrc, rects, bgColor, tolerance, mergeDist, minSize, animationSpeed, animationName, customOrder, disabledIndices]);
 
   const handleSaveProject = () => {
+    // If the image is a blob URL, we need to convert it to base64 to save it
+    let base64Image = imageSrc;
+    if (imageSrc && imageSrc.startsWith('blob:')) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx?.drawImage(img, 0, 0);
+        base64Image = canvas.toDataURL('image/png');
+        
+        const projectData = {
+          version: '1.0',
+          imageSrc: base64Image,
+          rects,
+          bgColor,
+          tolerance,
+          mergeDist,
+          minSize,
+          animationSpeed,
+          animationName,
+          customOrder,
+          disabledIndices: Array.from(disabledIndices),
+        };
+
+        const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${animationName || 'sprite_project'}.slicer`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setIsDirty(false);
+      };
+      img.src = imageSrc;
+      return; // The save will happen asynchronously
+    }
+
     const projectData = {
       version: '1.0',
-      imageSrc,
+      imageSrc: base64Image,
       rects,
       bgColor,
       tolerance,
@@ -304,7 +343,12 @@ export default function SpriteSlicer() {
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
-        if (data.imageSrc) setImageSrc(data.imageSrc);
+        if (data.imageSrc) {
+          // If the imageSrc is a blob URL, it might be invalid across sessions.
+          // However, since it's saved in the project, we try to load it.
+          // A better approach would be to save the image data as base64, but for now we'll just set it.
+          setImageSrc(data.imageSrc);
+        }
         if (data.rects) setRects(data.rects);
         if (data.bgColor) setBgColor(data.bgColor);
         if (data.tolerance) setTolerance(data.tolerance);
@@ -1358,15 +1402,15 @@ export default function SpriteSlicer() {
     const data = {
       name: animationName,
       speed: animationSpeed,
-      sprites: rects.map((r, i) => ({
+      frames: playableRects.map((r, i) => ({
         id: i,
         x: r.x,
         y: r.y,
         w: r.w,
         h: r.h,
-        enabled: !disabledIndices.has(i)
-      })),
-      order: customOrder.length > 0 ? customOrder : rects.map((_, i) => i)
+        pivotX: Math.floor(r.w / 2),
+        pivotY: Math.floor(r.h / 2)
+      }))
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1376,6 +1420,16 @@ export default function SpriteSlicer() {
     link.href = url;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleRemoveDisabled = () => {
+    if (disabledIndices.size === 0) return;
+    pushToHistory();
+    const newRects = rects.filter((_, i) => !disabledIndices.has(i));
+    setRects(newRects);
+    setDisabledIndices(new Set());
+    setCustomOrder(newRects.map((_, i) => i));
+    setSelectedRectIndex(null);
   };
 
   const handleClearAll = () => {
@@ -1420,7 +1474,14 @@ export default function SpriteSlicer() {
     return {
       [animationName]: {
         speed: animationSpeed,
-        frames: playableRects.map(r => ({ x: r.x, y: r.y, w: r.w, h: r.h }))
+        frames: playableRects.map(r => ({ 
+          x: r.x, 
+          y: r.y, 
+          w: r.w, 
+          h: r.h,
+          pivotX: Math.floor(r.w / 2),
+          pivotY: Math.floor(r.h / 2)
+        }))
       }
     };
   }, [animationName, animationSpeed, playableRects]);
@@ -2164,6 +2225,13 @@ export default function SpriteSlicer() {
                   <Scissors className="w-3 h-3 text-amber-500" />
                   {t.autoCrop}
                 </button>
+                <button 
+                  onClick={handleRemoveDisabled}
+                  className="col-span-2 flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white py-2 rounded text-[10px] font-bold transition-all border border-neutral-700"
+                >
+                  <Trash2 className="w-3 h-3 text-red-400" />
+                  {t.removeDisabled}
+                </button>
               </div>
               <button 
                 onClick={handleClearAll}
@@ -2311,7 +2379,7 @@ export default function SpriteSlicer() {
             {isDetecting ? (
               <><Loader2 className="w-3 h-3 animate-spin" /> {t.detecting}</>
             ) : (
-              <>{t.spritesDetected.replace('{n}', rects.length.toString())}</>
+              <>{t.spritesDetected.replace('{active}', playableRects.length.toString()).replace('{total}', rects.length.toString())}</>
             )}
           </div>
 
