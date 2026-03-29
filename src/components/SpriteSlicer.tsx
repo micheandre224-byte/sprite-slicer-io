@@ -83,35 +83,6 @@ interface ErrorBoundaryProps {
   fallback: ReactNode;
 }
 
-interface ErrorBoundaryState {
-  hasError: boolean;
-}
-
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  props: ErrorBoundaryProps;
-  state: ErrorBoundaryState = { hasError: false };
-
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.props = props;
-  }
-
-  static getDerivedStateFromError(_: Error): ErrorBoundaryState {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Slicer.io Security Error Boundary caught an error:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback;
-    }
-    return this.props.children;
-  }
-}
-
 export default function SpriteSlicer() {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
@@ -1506,7 +1477,11 @@ export default function SpriteSlicer() {
   const handleExportSpritesheet = async () => {
     if (!imageElement || rects.length === 0) return;
     
-    const enabledRects = rects.filter((_, i) => !disabledIndices.has(i));
+    // Respect selected row and custom order
+    const enabledRects = customOrder
+      .filter(idx => !disabledIndices.has(idx))
+      .map(idx => rects[idx]);
+      
     if (enabledRects.length === 0) return;
     
     // Simple packing: grid based on square root
@@ -1640,7 +1615,8 @@ export default function SpriteSlicer() {
   };
 
   const jsonOutput = useMemo(() => {
-    const activeIndices = customOrder.filter(idx => !disabledIndices.has(idx));
+    // Filter indices to ensure they exist in rects (handles stale customOrder)
+    const activeIndices = customOrder.filter(idx => !disabledIndices.has(idx) && rects[idx]);
     
     let rowIndex: number | 'all' = selectedRow;
     if (selectedRow !== 'all' && rows.length === 1) {
@@ -1807,32 +1783,12 @@ export default function SpriteSlicer() {
   const smallRectsCount = rects.filter(r => r.w < 10 || r.h < 10).length;
 
   return (
-    <ErrorBoundary fallback={
-      <div className="h-screen w-screen bg-neutral-950 flex items-center justify-center p-6 text-center">
-        <div className="max-w-md space-y-6">
-          <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center mx-auto">
-            <AlertTriangle className="w-10 h-10 text-red-500" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">Ops! Algo deu errado.</h1>
-          <p className="text-neutral-400 text-sm">
-            O Slicer.io detectou um erro inesperado ou um arquivo malicioso. 
-            Por segurança, a aplicação foi reiniciada.
-          </p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all"
-          >
-            Recarregar Site
-          </button>
-        </div>
-      </div>
-    }>
-      <div 
-        className={`flex flex-col lg:flex-row h-screen overflow-hidden bg-neutral-950 text-neutral-300 font-mono text-sm transition-all duration-300 ${isDraggingFile ? 'scale-[0.98] ring-4 ring-emerald-500 ring-inset' : ''}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
+    <div 
+      className={`flex flex-col lg:flex-row h-screen overflow-hidden bg-neutral-950 text-neutral-300 font-mono text-sm transition-all duration-300 ${isDraggingFile ? 'scale-[0.98] ring-4 ring-emerald-500 ring-inset' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Drag & Drop Overlay */}
       {isDraggingFile && (
         <div className="fixed inset-0 z-[200] bg-emerald-500/10 backdrop-blur-sm flex items-center justify-center pointer-events-none">
@@ -3275,6 +3231,5 @@ export default function SpriteSlicer() {
         </div>
       </div>
     </div>
-    </ErrorBoundary>
   );
 }

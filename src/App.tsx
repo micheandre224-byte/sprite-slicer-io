@@ -4,7 +4,12 @@
  */
 
 import SpriteSlicer from './components/SpriteSlicer';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 export default function App() {
-  return <SpriteSlicer />;
+  return (
+    <ErrorBoundary>
+      <SpriteSlicer />
+    </ErrorBoundary>
+  );
 }
