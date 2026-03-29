@@ -12,8 +12,8 @@
  * -----------------------------------------------------------
  */
 import React, { useState, useRef, useEffect, useMemo, useCallback, ErrorInfo, ReactNode } from 'react';
-import { Upload, Play, Pause, Download, Maximize, MousePointer2, Loader2, Image as ImageIcon, Smartphone, ZoomIn, ZoomOut, Move, Undo2, Redo2, Save, FolderOpen, HelpCircle, ArrowRight, ArrowDown, Globe, CheckSquare, Square, RefreshCw, Scissors, Trash2, Layers, FileJson, AlertTriangle, SkipBack, SkipForward } from 'lucide-react';
-import { detectSprites, Rect, smartSplit } from '../lib/sprite-detection';
+import { Upload, Play, Pause, Download, Maximize, MousePointer2, Loader2, Image as ImageIcon, Smartphone, ZoomIn, ZoomOut, Move, Undo2, Redo2, Save, FolderOpen, HelpCircle, ArrowRight, ArrowDown, Globe, CheckSquare, Square, RefreshCw, Scissors, Trash2, Layers, FileJson, AlertTriangle, SkipBack, SkipForward, Tag, Zap, Sparkles, Wand2, Crop } from 'lucide-react';
+import { detectSprites, Rect } from '../lib/sprite-detection';
 import { GIFEncoder, quantize, applyPalette } from 'gifenc';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -120,7 +120,7 @@ export default function SpriteSlicer() {
   const [bgColor, setBgColor] = useState<number[]>([255, 255, 255, 255]);
   const [tolerance, setTolerance] = useState(30);
   const [mergeDist, setMergeDist] = useState(2);
-  const [minSize, setMinSize] = useState(4);
+  const [minSize, setMinSize] = useState(1);
   
   const [isPickingColor, setIsPickingColor] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
@@ -128,12 +128,14 @@ export default function SpriteSlicer() {
   const [animationSpeed, setAnimationSpeed] = useState(0.1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentFrame, setCurrentFrame] = useState(0);
+  const [blendMode, setBlendMode] = useState<'normal' | 'screen'>('normal');
   const currentFrameRef = useRef(currentFrame);
   
   useEffect(() => {
     currentFrameRef.current = currentFrame;
   }, [currentFrame]);
   const [animationName, setAnimationName] = useState('animation_name');
+  const [characterName, setCharacterName] = useState('');
   const [selectedRow, setSelectedRow] = useState<number | 'all'>('all');
   const [isExportingGif, setIsExportingGif] = useState(false);
   const [disabledIndices, setDisabledIndices] = useState<Set<number>>(new Set());
@@ -148,6 +150,9 @@ export default function SpriteSlicer() {
   // Custom ordering of frames
   const [customOrder, setCustomOrder] = useState<number[]>([]);
   const [frameDurations, setFrameDurations] = useState<Record<number, number>>({});
+  const [rowNames, setRowNames] = useState<Record<number, string>>({});
+  const [rowPivots, setRowPivots] = useState<Record<number, 'center' | 'bottom'>>({});
+  const [rowTypes, setRowTypes] = useState<Record<number, string>>({});
 
   // Zoom and Pan state
   const [scale, setScale] = useState(1);
@@ -282,7 +287,7 @@ export default function SpriteSlicer() {
     if (imageSrc || rects.length > 0) {
       setIsDirty(true);
     }
-  }, [imageSrc, rects, bgColor, tolerance, mergeDist, minSize, animationSpeed, animationName, customOrder, disabledIndices]);
+  }, [imageSrc, rects, bgColor, tolerance, mergeDist, minSize, animationSpeed, animationName, characterName, customOrder, disabledIndices, rowNames, rowPivots, rowTypes]);
 
   // --- Auto-Save Persistence ---
   const [isInitialized, setIsInitialized] = useState(false);
@@ -300,9 +305,13 @@ export default function SpriteSlicer() {
           if (data.minSize) setMinSize(data.minSize);
           if (data.animationSpeed) setAnimationSpeed(data.animationSpeed);
           if (data.animationName) setAnimationName(data.animationName);
+          if (data.characterName !== undefined) setCharacterName(data.characterName);
           if (data.customOrder) setCustomOrder(data.customOrder);
           if (data.disabledIndices) setDisabledIndices(new Set(data.disabledIndices));
           if (data.frameDurations) setFrameDurations(data.frameDurations);
+          if (data.rowNames) setRowNames(data.rowNames);
+          if (data.rowPivots) setRowPivots(data.rowPivots);
+          if (data.rowTypes) setRowTypes(data.rowTypes);
           console.log('Auto-saved project restored.');
         }
       } catch (err) {
@@ -330,9 +339,13 @@ export default function SpriteSlicer() {
         minSize,
         animationSpeed,
         animationName,
+        characterName,
         customOrder,
         disabledIndices: Array.from(disabledIndices),
         frameDurations,
+        rowNames,
+        rowPivots,
+        rowTypes,
       };
       
       try {
@@ -344,7 +357,7 @@ export default function SpriteSlicer() {
 
     const timeoutId = setTimeout(saveToLocalForage, 1000); // Debounce auto-save
     return () => clearTimeout(timeoutId);
-  }, [isInitialized, imageSrc, rects, bgColor, tolerance, mergeDist, minSize, animationSpeed, animationName, customOrder, disabledIndices, frameDurations]);
+  }, [isInitialized, imageSrc, rects, bgColor, tolerance, mergeDist, minSize, animationSpeed, animationName, characterName, customOrder, disabledIndices, frameDurations, rowNames, rowPivots, rowTypes]);
 
   const handleSaveProject = () => {
     const projectData = {
@@ -357,9 +370,13 @@ export default function SpriteSlicer() {
       minSize,
       animationSpeed,
       animationName,
+      characterName,
       customOrder,
       disabledIndices: Array.from(disabledIndices),
       frameDurations,
+      rowNames,
+      rowPivots,
+      rowTypes,
     };
 
     const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
@@ -393,9 +410,13 @@ export default function SpriteSlicer() {
         if (data.minSize) setMinSize(data.minSize);
         if (data.animationSpeed) setAnimationSpeed(data.animationSpeed);
         if (data.animationName) setAnimationName(data.animationName);
+        if (data.characterName !== undefined) setCharacterName(data.characterName);
         if (data.customOrder) setCustomOrder(data.customOrder);
         if (data.disabledIndices) setDisabledIndices(new Set(data.disabledIndices));
         if (data.frameDurations) setFrameDurations(data.frameDurations);
+        if (data.rowNames) setRowNames(data.rowNames);
+        if (data.rowPivots) setRowPivots(data.rowPivots);
+        if (data.rowTypes) setRowTypes(data.rowTypes);
         
         setIsDirty(false);
         setHistory([]);
@@ -716,6 +737,9 @@ export default function SpriteSlicer() {
           if (data.customOrder) setCustomOrder(data.customOrder);
           if (data.disabledIndices) setDisabledIndices(new Set(data.disabledIndices));
           if (data.frameDurations) setFrameDurations(data.frameDurations);
+          if (data.rowNames) setRowNames(data.rowNames);
+          if (data.rowPivots) setRowPivots(data.rowPivots);
+          if (data.rowTypes) setRowTypes(data.rowTypes);
           setIsDirty(false);
           setHistory([]);
           setRedoStack([]);
@@ -741,36 +765,61 @@ export default function SpriteSlicer() {
     return () => window.removeEventListener('resize', checkMobile);
   }, [dismissedWarning]);
 
+  const detectBackgroundColor = (img: HTMLImageElement) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(img, 0, 0);
+
+    // Sample a grid of points to find the most common color
+    const samples = 10;
+    const colorCounts = new Map<string, { color: number[], count: number }>();
+    
+    for (let i = 0; i < samples; i++) {
+      for (let j = 0; j < samples; j++) {
+        // Sample points at 5%, 15%, 25%... 95% of width/height
+        const x = Math.floor(img.width * (i + 0.5) / samples);
+        const y = Math.floor(img.height * (j + 0.5) / samples);
+        
+        const data = ctx.getImageData(x, y, 1, 1).data;
+        if (data[3] < 10) continue; // Skip transparent
+        
+        const key = `${data[0]},${data[1]},${data[2]},${data[3]}`;
+        const existing = colorCounts.get(key);
+        if (existing) {
+          existing.count++;
+        } else {
+          colorCounts.set(key, { color: [data[0], data[1], data[2], data[3]], count: 1 });
+        }
+      }
+    }
+
+    if (colorCounts.size === 0) {
+      setBgColor([255, 255, 255, 0]); // Default to transparent if all sampled points are transparent
+      return;
+    }
+
+    // Find the most frequent color
+    let bestColor = [255, 255, 255, 255];
+    let maxCount = -1;
+    colorCounts.forEach(val => {
+      if (val.count > maxCount) {
+        maxCount = val.count;
+        bestColor = val.color;
+      }
+    });
+
+    setBgColor(bestColor);
+  };
+
   useEffect(() => {
     if (!imageSrc) return;
     const img = new Image();
     img.onload = () => {
       setImageElement(img);
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = img.width;
-      tempCanvas.height = img.height;
-      const ctx = tempCanvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        
-        // Check 4 corners to find the best background color
-        const corners = [
-          ctx.getImageData(0, 0, 1, 1).data,
-          ctx.getImageData(img.width - 1, 0, 1, 1).data,
-          ctx.getImageData(0, img.height - 1, 1, 1).data,
-          ctx.getImageData(img.width - 1, img.height - 1, 1, 1).data
-        ];
-        
-        // Prefer an opaque color if available at corners
-        let bestColor = corners[0];
-        for (const c of corners) {
-          if (c[3] > 10) {
-            bestColor = c;
-            break;
-          }
-        }
-        setBgColor([bestColor[0], bestColor[1], bestColor[2], bestColor[3]]);
-      }
+      detectBackgroundColor(img);
     };
     img.src = imageSrc;
   }, [imageSrc]);
@@ -813,6 +862,15 @@ export default function SpriteSlicer() {
         return detected.map((_, i) => i);
       });
       
+      if (detected.length === 1 && imageElement) {
+        const r = detected[0];
+        const area = r.w * r.h;
+        const imgArea = imageElement.width * imageElement.height;
+        if (area > imgArea * 0.8 && !activeHint) {
+          setActiveHint('singleLargeSprite');
+        }
+      }
+
       if (detected.length > 200 && rects.length === 0) { // Only auto-show if it's the first detection and very large
         setShowCropModal(true);
       }
@@ -1278,16 +1336,56 @@ export default function SpriteSlicer() {
     if (!ctx) return;
     
     ctx.drawImage(imageElement, 0, 0);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    
     const baseRect = rects[selectedRectIndex];
-    const newSubRects = smartSplit(imageData, baseRect, bgColor, tolerance);
+    const imageData = ctx.getImageData(baseRect.x, baseRect.y, baseRect.w, baseRect.h);
+    
+    // Use detectSprites with mergeDist = 0 to perfectly isolate non-touching sprites
+    // This handles sprites that overlap horizontally/vertically but don't touch
+    const newSubRects = detectSprites(imageData, bgColor, tolerance, 0, minSize);
     
     if (newSubRects.length > 0) {
       pushToHistory();
+      const adjustedRects = newSubRects.map(r => ({
+        ...r,
+        x: r.x + baseRect.x,
+        y: r.y + baseRect.y
+      }));
       setRects(prev => {
         const next = [...prev];
-        next.splice(selectedRectIndex, 1, ...newSubRects);
+        next.splice(selectedRectIndex, 1, ...adjustedRects);
+        return next;
+      });
+      setSelectedRectIndex(null);
+    }
+  };
+
+  const handleVfxSplit = () => {
+    if (selectedRectIndex === null || !imageElement || !rects[selectedRectIndex]) return;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = imageElement.width;
+    canvas.height = imageElement.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.drawImage(imageElement, 0, 0);
+    const baseRect = rects[selectedRectIndex];
+    const imageData = ctx.getImageData(baseRect.x, baseRect.y, baseRect.w, baseRect.h);
+    
+    // Use detectSprites with a tiny mergeDist (2px) to keep sparks of a single effect together
+    // but separate different effects
+    const newSubRects = detectSprites(imageData, bgColor, tolerance, 2, 1);
+    
+    if (newSubRects.length > 0) {
+      pushToHistory();
+      const adjustedRects = newSubRects.map(r => ({
+        ...r,
+        x: r.x + baseRect.x,
+        y: r.y + baseRect.y
+      }));
+      setRects(prev => {
+        const next = [...prev];
+        next.splice(selectedRectIndex, 1, ...adjustedRects);
         return next;
       });
       setSelectedRectIndex(null);
@@ -1459,27 +1557,7 @@ export default function SpriteSlicer() {
   };
 
   const handleExportMetadata = () => {
-    const activeIndices = customOrder.filter(idx => !disabledIndices.has(idx));
-    const data = {
-      name: animationName,
-      speed: animationSpeed,
-      frames: playableRects.map((r, i) => {
-        const rectIndex = activeIndices[i];
-        const multiplier = frameDurations[rectIndex] || 1;
-        return {
-          id: i,
-          x: r.x,
-          y: r.y,
-          w: r.w,
-          h: r.h,
-          pivotX: Math.floor(r.w / 2),
-          pivotY: Math.floor(r.h / 2),
-          duration: Number((animationSpeed * multiplier).toFixed(3))
-        };
-      })
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(jsonOutput, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.download = `${animationName}_metadata.json`;
@@ -1563,25 +1641,80 @@ export default function SpriteSlicer() {
 
   const jsonOutput = useMemo(() => {
     const activeIndices = customOrder.filter(idx => !disabledIndices.has(idx));
+    
+    let rowIndex: number | 'all' = selectedRow;
+    if (selectedRow !== 'all' && rows.length === 1) {
+      rowIndex = 0;
+    }
+
+    // Determine the name
+    let rawName = '';
+    if (rowIndex === 'all') {
+      rawName = (rowNames as any)['all'] || '';
+    } else {
+      rawName = rowNames[rowIndex as number] || '';
+    }
+    const defaultName = rowIndex === 'all' ? animationName : (rows.length === 1 ? animationName : `${animationName}_row${Number(rowIndex) + 1}`);
+    const name = rawName || defaultName;
+    
+    // Determine the type
+    let rawType = 'custom';
+    if (rowIndex === 'all') {
+      rawType = (rowTypes as any)['all'] || 'custom';
+    } else {
+      rawType = rowTypes[rowIndex as number] || 'custom';
+    }
+    
+    let type = rawType;
+    if (rawType === 'run') type = 'running';
+    if (rawType === 'jump') type = 'jumping';
+    if (rawType === 'roll') type = 'spindash';
+    if (rawType === 'effect') type = 'vfx';
+    
+    // Determine the pivot rule
+    let pivotType = 'center';
+    if (rowIndex === 'all') {
+      pivotType = (rowPivots as any)['all'] || 'center';
+    } else {
+      pivotType = rowPivots[rowIndex as number] || 'center';
+    }
+    const pivotRule = pivotType === 'bottom' ? 'base' : 'center';
+
+    // Filter indices for the selected row
+    let rowIndices = activeIndices;
+    if (rowIndex !== 'all') {
+      rowIndices = activeIndices.filter(idx => rows[rowIndex as number] && rows[rowIndex as number].includes(rects[idx]));
+    }
+
     return {
-      [animationName]: {
-        speed: animationSpeed, // Global speed reference
-        frames: playableRects.map((r, i) => {
-          const rectIndex = activeIndices[i];
-          const multiplier = frameDurations[rectIndex] || 1;
-          return { 
-            x: r.x, 
-            y: r.y, 
-            w: r.w, 
-            h: r.h,
-            pivotX: Math.floor(r.w / 2),
-            pivotY: Math.floor(r.h / 2),
-            duration: Number((animationSpeed * multiplier).toFixed(3))
-          };
-        })
-      }
+      character: characterName || "Unknown",
+      name,
+      type,
+      speed: animationSpeed,
+      pivotRule,
+      frames: rowIndices.map(idx => {
+        const r = rects[idx];
+        const multiplier = frameDurations[idx] || 1;
+        let pivotY = Math.floor(r.h / 2);
+        if (pivotRule === 'base') {
+          if (type === 'idle') {
+            pivotY = Math.max(0, r.h - 10);
+          } else {
+            pivotY = Math.max(0, r.h - 8);
+          }
+        }
+        return {
+          x: r.x,
+          y: r.y,
+          w: r.w,
+          h: r.h,
+          pivotX: Math.floor(r.w / 2),
+          pivotY,
+          duration: Number((animationSpeed * multiplier).toFixed(3))
+        };
+      })
     };
-  }, [animationName, animationSpeed, playableRects, customOrder, disabledIndices, frameDurations]);
+  }, [animationName, animationSpeed, customOrder, disabledIndices, frameDurations, rows, rowNames, rowPivots, rowTypes, rects, selectedRow]);
 
   const handleDownloadJson = () => {
     const blob = new Blob([JSON.stringify(jsonOutput, null, 2)], { type: 'application/json' });
@@ -2214,7 +2347,16 @@ export default function SpriteSlicer() {
               <input type="file" className="hidden" accept="video/*" onChange={handleVideoUpload} />
             </label>
 
-            <div className="grid grid-cols-2 gap-2 pt-2">
+            <div className="grid grid-cols-3 gap-2 pt-2">
+              <button 
+                onClick={() => setShowCropModal(true)}
+                disabled={!imageSrc}
+                className="flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white py-2 rounded text-[10px] font-bold transition-all disabled:opacity-50 border border-neutral-700"
+                title={t.cropSpriteSheet}
+              >
+                <Crop className="w-3 h-3 text-amber-500" />
+                {t.cropSpriteSheet}
+              </button>
               <button 
                 onClick={handleSaveProject}
                 disabled={!imageSrc}
@@ -2306,6 +2448,35 @@ export default function SpriteSlicer() {
                 {t.resetSettings}
               </button>
             </div>
+          </div>
+
+          {/* Detection */}
+          <div className="space-y-4 pt-4 border-t border-neutral-800">
+            <label className="block text-xs uppercase tracking-wider text-neutral-500">{t.autoDetectSprites}</label>
+            <button 
+              onClick={() => {
+                if (imageElement) {
+                  detectBackgroundColor(imageElement);
+                  setTolerance(15); 
+                  setMergeDist(2);
+                  setMinSize(4);
+                  
+                  // If after a short delay we still have only 1 large sprite, try to increase tolerance
+                  setTimeout(() => {
+                    if (rects.length === 1) {
+                      const r = rects[0];
+                      if (r.w * r.h > imageElement.width * imageElement.height * 0.8) {
+                        setTolerance(30);
+                      }
+                    }
+                  }, 500);
+                }
+              }}
+              className="flex items-center justify-center gap-2 w-full bg-emerald-500 hover:bg-emerald-400 text-black py-2 rounded text-[10px] font-bold transition-all"
+            >
+              <Wand2 className="w-3 h-3" />
+              {t.autoDetectSprites}
+            </button>
           </div>
 
           {/* Batch Actions */}
@@ -2447,6 +2618,19 @@ export default function SpriteSlicer() {
 
               <div className="pt-1">
                 <div className="text-[10px] text-neutral-500 mb-2 italic">
+                  Ou use o Corte de Efeitos (VFX) para separar faíscas e brilhos:
+                </div>
+                <button 
+                  onClick={handleVfxSplit}
+                  className="w-full bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-lg text-xs font-bold transition-all shadow-lg shadow-purple-900/20 active:scale-[0.98] pointer-events-auto flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  {t.typeEffect} Split
+                </button>
+              </div>
+
+              <div className="pt-1">
+                <div className="text-[10px] text-neutral-500 mb-2 italic">
                   {t.refineSelectionDesc}
                 </div>
                 <button 
@@ -2494,6 +2678,7 @@ export default function SpriteSlicer() {
             <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-xl max-w-sm w-full shadow-2xl">
               <h3 className="text-lg font-bold text-white mb-4">{t.help}</h3>
               <div className="space-y-4 text-sm text-neutral-300">
+                {rects.length === 1 && <p>• {t.hints.singleLargeSprite}</p>}
                 {rects.length > 50 && <p>• {t.hints.multipleCharacters}</p>}
                 {rects.length === 0 && bgColor[3] > 200 && <p>• {t.hints.transparencyIssue}</p>}
                 {customOrder.length > 1 && customOrder.every((val, index) => val === index) && <p>• {t.hints.reorderFrames}</p>}
@@ -2641,6 +2826,13 @@ export default function SpriteSlicer() {
             <div className="flex items-center justify-between">
               <span className="text-xs text-neutral-400 font-bold uppercase tracking-wider">{t.backgroundColor}</span>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => imageElement && detectBackgroundColor(imageElement)}
+                  className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors text-[10px] font-bold border border-emerald-500/20"
+                  title={t.autoDetectBg}
+                >
+                  <Wand2 className="w-3 h-3" />
+                </button>
                 <button 
                   onClick={() => setShowMask(!showMask)}
                   className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showMask ? 'bg-magenta-500 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'}`}
@@ -2711,7 +2903,15 @@ export default function SpriteSlicer() {
             previewBg === 'green' ? "bg-[#00ff00]" :
             "bg-[#ff00ff]"
           }`} />
-          <canvas ref={previewCanvasRef} className="relative z-10" style={{ imageRendering: 'pixelated', transform: 'scale(2)' }} />
+          <canvas 
+            ref={previewCanvasRef} 
+            className="relative z-10" 
+            style={{ 
+              imageRendering: 'pixelated', 
+              transform: 'scale(2)',
+              mixBlendMode: blendMode === 'screen' ? 'screen' : 'normal'
+            }} 
+          />
           
           {/* Preview BG Switcher */}
           <div className="absolute top-2 right-2 z-20 flex flex-col gap-2">
@@ -2739,6 +2939,15 @@ export default function SpriteSlicer() {
             >
               <Layers className="w-3 h-3" />
               {t.onionSkin}
+            </button>
+
+            <button 
+              onClick={() => setBlendMode(prev => prev === 'normal' ? 'screen' : 'normal')}
+              className={`flex items-center justify-center gap-2 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${blendMode === 'screen' ? 'bg-purple-500 text-white border-purple-400' : 'bg-black/50 text-neutral-400 border-white/10 hover:text-white'}`}
+              title="VFX Blend Mode (Screen)"
+            >
+              <Sparkles className="w-3 h-3" />
+              {blendMode === 'screen' ? 'VFX ON' : 'VFX OFF'}
             </button>
           </div>
         </div>
@@ -2853,6 +3062,95 @@ export default function SpriteSlicer() {
                   <option key={i} value={i}>{t.row} {i + 1} ({row.length} {t.frames.toLowerCase()})</option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {rects.length > 0 && (
+            <div className="p-3 bg-neutral-900/50 rounded border border-neutral-800 space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Tag className="w-4 h-4 text-emerald-500" />
+                <h3 className="text-xs font-bold text-neutral-300">
+                  {selectedRow === 'all' ? t.rowSettings : (rows.length === 1 ? t.rowSettings : `${t.rowSettings} (${Number(selectedRow) + 1})`)}
+                </h3>
+              </div>
+              
+              <div>
+                <label className="block text-xs mb-1 text-neutral-400">{t.animType}</label>
+                <select 
+                  value={selectedRow === 'all' ? (rowTypes['all'] || 'custom') : (rowTypes[rows.length === 1 ? 0 : Number(selectedRow)] || 'custom')}
+                  onChange={e => {
+                    const type = e.target.value;
+                    const rowIndex = selectedRow === 'all' ? 'all' : (rows.length === 1 ? 0 : Number(selectedRow));
+                    setRowTypes(prev => ({ ...prev, [rowIndex]: type }));
+                    
+                    if (['run', 'idle', 'attack'].includes(type)) {
+                      setRowPivots(prev => ({ ...prev, [rowIndex]: 'bottom' }));
+                    } else if (['jump', 'roll', 'hurt'].includes(type)) {
+                      setRowPivots(prev => ({ ...prev, [rowIndex]: 'center' }));
+                    }
+                    
+                    if (type !== 'custom') {
+                      setRowNames(prev => {
+                        const currentName = prev[rowIndex as number] || '';
+                        const defaultNames = ['idle', 'run', 'jump', 'roll', 'attack', 'hurt', 'effect', ''];
+                        if (defaultNames.includes(currentName)) {
+                           return { ...prev, [rowIndex]: type };
+                        }
+                        return prev;
+                      });
+                    }
+                  }}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="custom">{t.typeCustom}</option>
+                  <option value="idle">{t.typeIdle}</option>
+                  <option value="run">{t.typeRun}</option>
+                  <option value="jump">{t.typeJump}</option>
+                  <option value="roll">{t.typeRoll}</option>
+                  <option value="attack">{t.typeAttack}</option>
+                  <option value="hurt">{t.typeHurt}</option>
+                  <option value="effect">{t.typeEffect}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs mb-1 text-neutral-400">{t.characterName}</label>
+                <input 
+                  type="text" 
+                  value={characterName}
+                  onChange={e => setCharacterName(e.target.value)}
+                  placeholder="Ex: Sonic, Mario..."
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs mb-1 text-neutral-400">{t.rowName}</label>
+                <input 
+                  type="text" 
+                  value={selectedRow === 'all' ? (rowNames['all' as any] || '') : (rowNames[rows.length === 1 ? 0 : Number(selectedRow)] || '')}
+                  onChange={e => {
+                    const rowIndex = selectedRow === 'all' ? 'all' : (rows.length === 1 ? 0 : Number(selectedRow));
+                    setRowNames(prev => ({ ...prev, [rowIndex]: e.target.value }));
+                  }}
+                  placeholder={selectedRow === 'all' ? animationName : (rows.length === 1 ? animationName : `${animationName}_row${Number(selectedRow) + 1}`)}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs mb-1 text-neutral-400">{t.pivotY}</label>
+                <select 
+                  value={selectedRow === 'all' ? (rowPivots['all' as any] || 'center') : (rowPivots[rows.length === 1 ? 0 : Number(selectedRow)] || 'center')}
+                  onChange={e => {
+                    const rowIndex = selectedRow === 'all' ? 'all' : (rows.length === 1 ? 0 : Number(selectedRow));
+                    setRowPivots(prev => ({ ...prev, [rowIndex]: e.target.value as 'center' | 'bottom' }));
+                  }}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="center">{t.pivotCenter}</option>
+                  <option value="bottom">{t.pivotBottom}</option>
+                </select>
+              </div>
             </div>
           )}
 
