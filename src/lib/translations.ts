@@ -150,11 +150,15 @@ export const translations = {
       manySprites: "Parece que sua imagem tem muitos sprites. Deseja usar o Smart Split ou Grid Split?",
       transparencyIssue: "Dica: Se o fundo não estiver transparente, use a Pipeta para selecionar a cor de fundo.",
       multipleCharacters: "Parece que sua imagem tem múltiplos personagens. Deseja recortar a área de um deles?",
-      reorderFrames: "Dica: Você pode arrastar os números para trocar a posição dos frames!",
+      reorderFrames: "Dica: Pressione e segure para arrastar e trocar a posição dos frames!",
     },
     help: "Ajuda",
     noTipsAvailable: "Nenhuma dica disponível no momento.",
-    close: "Fechar"
+    close: "Fechar",
+    frameDuration: "Duração do Frame",
+    multiplier: "Multiplicador",
+    prevFrame: "Frame Anterior",
+    nextFrame: "Próximo Frame"
   },
   en: {
     title: "Sprite Slicer",
@@ -305,11 +309,15 @@ export const translations = {
       manySprites: "It seems your image has many sprites. Do you want to use Smart Split or Grid Split?",
       transparencyIssue: "Tip: If the background is not transparent, use the Picker to select the background color.",
       multipleCharacters: "It seems your image has multiple characters. Do you want to crop one of them?",
-      reorderFrames: "Tip: You can drag the numbers to change frame positions!",
+      reorderFrames: "Tip: Press and hold to drag and change frame positions!",
     },
     help: "Help",
     noTipsAvailable: "No tips available at the moment.",
-    close: "Close"
+    close: "Close",
+    frameDuration: "Frame Duration",
+    multiplier: "Multiplier",
+    prevFrame: "Previous Frame",
+    nextFrame: "Next Frame"
   },
   es: {
     title: "Sprite Slicer",
@@ -460,10 +468,14 @@ export const translations = {
       manySprites: "Parece que tu imagen tiene muchos sprites. ¿Quieres usar Smart Split o Grid Split?",
       transparencyIssue: "Consejo: Si el fondo no é transparente, usa el Gotero para seleccionar el color de fondo.",
       multipleCharacters: "Parece que tu imagen tiene múltiples personajes. ¿Quieres recortar el área de uno de ellos?",
-      reorderFrames: "Consejo: ¡Puedes arrastrar los números para cambiar la posición de los fotogramas!",
+      reorderFrames: "Consejo: ¡Mantén presionado para arrastrar y cambiar la posición de los fotogramas!",
     },
     help: "Ayuda",
     noTipsAvailable: "No hay consejos disponibles en este momento.",
-    close: "Cerrar"
+    close: "Cerrar",
+    frameDuration: "Duración del Fotograma",
+    multiplier: "Multiplicador",
+    prevFrame: "Fotograma Anterior",
+    nextFrame: "Siguiente Fotograma"
   }
 };

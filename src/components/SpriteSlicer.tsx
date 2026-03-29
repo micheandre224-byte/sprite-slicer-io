@@ -12,12 +12,13 @@
  * -----------------------------------------------------------
  */
 import React, { useState, useRef, useEffect, useMemo, useCallback, ErrorInfo, ReactNode } from 'react';
-import { Upload, Play, Pause, Download, Maximize, MousePointer2, Loader2, Image as ImageIcon, Smartphone, ZoomIn, ZoomOut, Move, Undo2, Redo2, Save, FolderOpen, HelpCircle, ArrowRight, ArrowDown, Globe, CheckSquare, Square, RefreshCw, Scissors, Trash2, Layers, FileJson, AlertTriangle } from 'lucide-react';
+import { Upload, Play, Pause, Download, Maximize, MousePointer2, Loader2, Image as ImageIcon, Smartphone, ZoomIn, ZoomOut, Move, Undo2, Redo2, Save, FolderOpen, HelpCircle, ArrowRight, ArrowDown, Globe, CheckSquare, Square, RefreshCw, Scissors, Trash2, Layers, FileJson, AlertTriangle, SkipBack, SkipForward } from 'lucide-react';
 import { detectSprites, Rect, smartSplit } from '../lib/sprite-detection';
 import { GIFEncoder, quantize, applyPalette } from 'gifenc';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import localforage from 'localforage';
 import { Language, translations } from '../lib/translations';
 
 // --- Sortable Item Component ---
@@ -28,10 +29,11 @@ function SortableFrame({ id, globalIndex, isDisabled, onToggle }: { id: string, 
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 10 : 1,
+    touchAction: 'manipulation',
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none">
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <button
         onClick={(e) => {
           // Prevent toggle if we are dragging
@@ -126,6 +128,11 @@ export default function SpriteSlicer() {
   const [animationSpeed, setAnimationSpeed] = useState(0.1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentFrame, setCurrentFrame] = useState(0);
+  const currentFrameRef = useRef(currentFrame);
+  
+  useEffect(() => {
+    currentFrameRef.current = currentFrame;
+  }, [currentFrame]);
   const [animationName, setAnimationName] = useState('animation_name');
   const [selectedRow, setSelectedRow] = useState<number | 'all'>('all');
   const [isExportingGif, setIsExportingGif] = useState(false);
@@ -140,6 +147,7 @@ export default function SpriteSlicer() {
   
   // Custom ordering of frames
   const [customOrder, setCustomOrder] = useState<number[]>([]);
+  const [frameDurations, setFrameDurations] = useState<Record<number, number>>({});
 
   // Zoom and Pan state
   const [scale, setScale] = useState(1);
@@ -157,8 +165,8 @@ export default function SpriteSlicer() {
   const [gridRows, setGridRows] = useState(1);
 
   // Undo/Redo state
-  const [history, setHistory] = useState<{ rects: Rect[], customOrder: number[], disabledIndices: Set<number> }[]>([]);
-  const [redoStack, setRedoStack] = useState<{ rects: Rect[], customOrder: number[], disabledIndices: Set<number> }[]>([]);
+  const [history, setHistory] = useState<{ rects: Rect[], customOrder: number[], disabledIndices: Set<number>, frameDurations: Record<number, number> }[]>([]);
+  const [redoStack, setRedoStack] = useState<{ rects: Rect[], customOrder: number[], disabledIndices: Set<number>, frameDurations: Record<number, number> }[]>([]);
   const [showSmartTips, setShowSmartTips] = useState(true);
   const [showSmartTipsModal, setShowSmartTipsModal] = useState(false);
   const [activeHint, setActiveHint] = useState<string | null>(null);
@@ -208,10 +216,11 @@ export default function SpriteSlicer() {
     setHistory(prev => [...prev, { 
       rects: [...rects], 
       customOrder: [...customOrder], 
-      disabledIndices: new Set(disabledIndices)
+      disabledIndices: new Set(disabledIndices),
+      frameDurations: { ...frameDurations }
     }]);
     setRedoStack([]);
-  }, [rects, customOrder, disabledIndices]);
+  }, [rects, customOrder, disabledIndices, frameDurations]);
 
   const handleUndo = useCallback(() => {
     if (history.length === 0) return;
@@ -221,17 +230,19 @@ export default function SpriteSlicer() {
     setRedoStack(prev => [...prev, { 
       rects: [...rects], 
       customOrder: [...customOrder], 
-      disabledIndices: new Set(disabledIndices)
+      disabledIndices: new Set(disabledIndices),
+      frameDurations: { ...frameDurations }
     }]);
     
     // Restore previous
     setRects(prevState.rects);
     setCustomOrder(prevState.customOrder);
     setDisabledIndices(prevState.disabledIndices);
+    setFrameDurations(prevState.frameDurations || {});
     
     setHistory(prev => prev.slice(0, -1));
     setSelectedRectIndex(null);
-  }, [history, rects, customOrder, disabledIndices]);
+  }, [history, rects, customOrder, disabledIndices, frameDurations]);
 
   const handleRedo = useCallback(() => {
     if (redoStack.length === 0) return;
@@ -241,17 +252,19 @@ export default function SpriteSlicer() {
     setHistory(prev => [...prev, { 
       rects: [...rects], 
       customOrder: [...customOrder], 
-      disabledIndices: new Set(disabledIndices)
+      disabledIndices: new Set(disabledIndices),
+      frameDurations: { ...frameDurations }
     }]);
     
     // Restore next
     setRects(nextState.rects);
     setCustomOrder(nextState.customOrder);
     setDisabledIndices(nextState.disabledIndices);
+    setFrameDurations(nextState.frameDurations || {});
     
     setRedoStack(prev => prev.slice(0, -1));
     setSelectedRectIndex(null);
-  }, [redoStack, rects, customOrder, disabledIndices]);
+  }, [redoStack, rects, customOrder, disabledIndices, frameDurations]);
 
   // --- Project Persistence ---
   useEffect(() => {
@@ -271,49 +284,72 @@ export default function SpriteSlicer() {
     }
   }, [imageSrc, rects, bgColor, tolerance, mergeDist, minSize, animationSpeed, animationName, customOrder, disabledIndices]);
 
-  const handleSaveProject = () => {
-    // If the image is a blob URL, we need to convert it to base64 to save it
-    let base64Image = imageSrc;
-    if (imageSrc && imageSrc.startsWith('blob:')) {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx?.drawImage(img, 0, 0);
-        base64Image = canvas.toDataURL('image/png');
-        
-        const projectData = {
-          version: '1.0',
-          imageSrc: base64Image,
-          rects,
-          bgColor,
-          tolerance,
-          mergeDist,
-          minSize,
-          animationSpeed,
-          animationName,
-          customOrder,
-          disabledIndices: Array.from(disabledIndices),
-        };
+  // --- Auto-Save Persistence ---
+  const [isInitialized, setIsInitialized] = useState(false);
 
-        const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${animationName || 'sprite_project'}.slicer`;
-        a.click();
-        URL.revokeObjectURL(url);
-        setIsDirty(false);
+  useEffect(() => {
+    const loadAutoSave = async () => {
+      try {
+        const data = await localforage.getItem<any>('spriteSlicerAutoSave');
+        if (data && data.version === '1.0') {
+          if (data.imageSrc) setImageSrc(data.imageSrc);
+          if (data.rects) setRects(data.rects);
+          if (data.bgColor) setBgColor(data.bgColor);
+          if (data.tolerance) setTolerance(data.tolerance);
+          if (data.mergeDist) setMergeDist(data.mergeDist);
+          if (data.minSize) setMinSize(data.minSize);
+          if (data.animationSpeed) setAnimationSpeed(data.animationSpeed);
+          if (data.animationName) setAnimationName(data.animationName);
+          if (data.customOrder) setCustomOrder(data.customOrder);
+          if (data.disabledIndices) setDisabledIndices(new Set(data.disabledIndices));
+          if (data.frameDurations) setFrameDurations(data.frameDurations);
+          console.log('Auto-saved project restored.');
+        }
+      } catch (err) {
+        console.error('Failed to load auto-save:', err);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+    loadAutoSave();
+  }, []);
+
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    const saveToLocalForage = async () => {
+      if (!imageSrc && rects.length === 0) return; // Don't save empty state
+      
+      const projectData = {
+        version: '1.0',
+        imageSrc,
+        rects,
+        bgColor,
+        tolerance,
+        mergeDist,
+        minSize,
+        animationSpeed,
+        animationName,
+        customOrder,
+        disabledIndices: Array.from(disabledIndices),
+        frameDurations,
       };
-      img.src = imageSrc;
-      return; // The save will happen asynchronously
-    }
+      
+      try {
+        await localforage.setItem('spriteSlicerAutoSave', projectData);
+      } catch (err) {
+        console.error('Failed to auto-save project:', err);
+      }
+    };
 
+    const timeoutId = setTimeout(saveToLocalForage, 1000); // Debounce auto-save
+    return () => clearTimeout(timeoutId);
+  }, [isInitialized, imageSrc, rects, bgColor, tolerance, mergeDist, minSize, animationSpeed, animationName, customOrder, disabledIndices, frameDurations]);
+
+  const handleSaveProject = () => {
     const projectData = {
       version: '1.0',
-      imageSrc: base64Image,
+      imageSrc,
       rects,
       bgColor,
       tolerance,
@@ -323,6 +359,7 @@ export default function SpriteSlicer() {
       animationName,
       customOrder,
       disabledIndices: Array.from(disabledIndices),
+      frameDurations,
     };
 
     const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
@@ -358,6 +395,7 @@ export default function SpriteSlicer() {
         if (data.animationName) setAnimationName(data.animationName);
         if (data.customOrder) setCustomOrder(data.customOrder);
         if (data.disabledIndices) setDisabledIndices(new Set(data.disabledIndices));
+        if (data.frameDurations) setFrameDurations(data.frameDurations);
         
         setIsDirty(false);
         setHistory([]);
@@ -590,6 +628,12 @@ export default function SpriteSlicer() {
         });
 
         setImageSrc(sheetCanvas.toDataURL('image/png'));
+        setRects([]);
+        setCustomOrder([]);
+        setDisabledIndices(new Set());
+        setFrameDurations({});
+        setSelectedRectIndex(null);
+        setCurrentFrame(0);
       } catch (error) {
         console.error("Error processing video:", error);
         alert("Error processing video.");
@@ -611,16 +655,20 @@ export default function SpriteSlicer() {
       return;
     }
 
-    const url = URL.createObjectURL(file);
-    setImageSrc(url);
-    setRects([]);
-    setSelectedRectIndex(null);
-    setCurrentFrame(0);
-    setSelectedRow('all');
-    setDisabledIndices(new Set());
-    setCustomOrder([]);
-    setScale(1);
-    setPan({ x: 0, y: 0 });
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImageSrc(e.target?.result as string);
+      setRects([]);
+      setSelectedRectIndex(null);
+      setCurrentFrame(0);
+      setSelectedRow('all');
+      setDisabledIndices(new Set());
+      setCustomOrder([]);
+      setFrameDurations({});
+      setScale(1);
+      setPan({ x: 0, y: 0 });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -667,6 +715,7 @@ export default function SpriteSlicer() {
           if (data.animationName) setAnimationName(data.animationName);
           if (data.customOrder) setCustomOrder(data.customOrder);
           if (data.disabledIndices) setDisabledIndices(new Set(data.disabledIndices));
+          if (data.frameDurations) setFrameDurations(data.frameDurations);
           setIsDirty(false);
           setHistory([]);
           setRedoStack([]);
@@ -760,6 +809,7 @@ export default function SpriteSlicer() {
       
       setCustomOrder(prev => {
         if (prev.length === detected.length) return prev;
+        setFrameDurations({});
         return detected.map((_, i) => i);
       });
       
@@ -873,6 +923,7 @@ export default function SpriteSlicer() {
       const isActive = activeRects.includes(r);
       const isDisabled = disabledIndices.has(i);
       const isSelected = selectedRectIndex === i;
+      const isSmall = r.w < 10 || r.h < 10; // Threshold for "small" rects
       
       if (isSelected) {
         ctx.strokeStyle = '#3b82f6'; // blue-500 for selection
@@ -884,6 +935,10 @@ export default function SpriteSlicer() {
       } else if (isDisabled) {
         ctx.strokeStyle = '#ef4444'; // red-500
         ctx.fillStyle = '#ef4444';
+        ctx.lineWidth = 1;
+      } else if (isSmall) {
+        ctx.strokeStyle = '#f59e0b'; // amber-500 for small rects
+        ctx.fillStyle = '#f59e0b';
         ctx.lineWidth = 1;
       } else {
         ctx.strokeStyle = '#10b981'; // emerald-500
@@ -948,7 +1003,12 @@ export default function SpriteSlicer() {
     let lastTime = performance.now();
 
     const render = (time: number) => {
-      if (time - lastTime > animationSpeed * 1000) {
+      const activeIndices = customOrder.filter(idx => !disabledIndices.has(idx));
+      const rectIndex = activeIndices[currentFrameRef.current];
+      const multiplier = frameDurations[rectIndex] || 1;
+      const currentDuration = animationSpeed * 1000 * multiplier;
+
+      if (time - lastTime > currentDuration) {
         setCurrentFrame((prev) => (prev + 1) % playableRects.length);
         lastTime = time;
       }
@@ -957,7 +1017,7 @@ export default function SpriteSlicer() {
     animationFrameId = requestAnimationFrame(render);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isPlaying, playableRects.length, animationSpeed]);
+  }, [isPlaying, playableRects.length, animationSpeed, customOrder, disabledIndices, frameDurations]);
 
   useEffect(() => {
     const canvas = previewCanvasRef.current;
@@ -1399,18 +1459,24 @@ export default function SpriteSlicer() {
   };
 
   const handleExportMetadata = () => {
+    const activeIndices = customOrder.filter(idx => !disabledIndices.has(idx));
     const data = {
       name: animationName,
       speed: animationSpeed,
-      frames: playableRects.map((r, i) => ({
-        id: i,
-        x: r.x,
-        y: r.y,
-        w: r.w,
-        h: r.h,
-        pivotX: Math.floor(r.w / 2),
-        pivotY: Math.floor(r.h / 2)
-      }))
+      frames: playableRects.map((r, i) => {
+        const rectIndex = activeIndices[i];
+        const multiplier = frameDurations[rectIndex] || 1;
+        return {
+          id: i,
+          x: r.x,
+          y: r.y,
+          w: r.w,
+          h: r.h,
+          pivotX: Math.floor(r.w / 2),
+          pivotY: Math.floor(r.h / 2),
+          duration: Number((animationSpeed * multiplier).toFixed(3))
+        };
+      })
     };
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1430,6 +1496,18 @@ export default function SpriteSlicer() {
     setDisabledIndices(new Set());
     setCustomOrder(newRects.map((_, i) => i));
     setSelectedRectIndex(null);
+    
+    const newFrameDurations: Record<number, number> = {};
+    let newIndex = 0;
+    for (let i = 0; i < rects.length; i++) {
+      if (!disabledIndices.has(i)) {
+        if (frameDurations[i]) {
+          newFrameDurations[newIndex] = frameDurations[i];
+        }
+        newIndex++;
+      }
+    }
+    setFrameDurations(newFrameDurations);
   };
 
   const handleClearAll = () => {
@@ -1442,14 +1520,27 @@ export default function SpriteSlicer() {
     setRects([]);
     setCustomOrder([]);
     setDisabledIndices(new Set());
+    setFrameDurations({});
     setSelectedRectIndex(null);
+    setImageSrc(null);
+    setImageElement(null);
+    setAnimationName('');
+    setHistory([]);
+    setRedoStack([]);
     setShowClearConfirm(false);
+    localforage.removeItem('spriteSlicerAutoSave');
   };
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 5, // Require 5px movement before dragging starts (allows clicking to toggle)
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250, // Require 250ms hold before dragging starts on touch devices
+        tolerance: 5, // Allow up to 5px movement during the delay
       },
     }),
     useSensor(KeyboardSensor, {
@@ -1471,20 +1562,26 @@ export default function SpriteSlicer() {
   };
 
   const jsonOutput = useMemo(() => {
+    const activeIndices = customOrder.filter(idx => !disabledIndices.has(idx));
     return {
       [animationName]: {
-        speed: animationSpeed,
-        frames: playableRects.map(r => ({ 
-          x: r.x, 
-          y: r.y, 
-          w: r.w, 
-          h: r.h,
-          pivotX: Math.floor(r.w / 2),
-          pivotY: Math.floor(r.h / 2)
-        }))
+        speed: animationSpeed, // Global speed reference
+        frames: playableRects.map((r, i) => {
+          const rectIndex = activeIndices[i];
+          const multiplier = frameDurations[rectIndex] || 1;
+          return { 
+            x: r.x, 
+            y: r.y, 
+            w: r.w, 
+            h: r.h,
+            pivotX: Math.floor(r.w / 2),
+            pivotY: Math.floor(r.h / 2),
+            duration: Number((animationSpeed * multiplier).toFixed(3))
+          };
+        })
       }
     };
-  }, [animationName, animationSpeed, playableRects]);
+  }, [animationName, animationSpeed, playableRects, customOrder, disabledIndices, frameDurations]);
 
   const handleDownloadJson = () => {
     const blob = new Blob([JSON.stringify(jsonOutput, null, 2)], { type: 'application/json' });
@@ -1513,7 +1610,13 @@ export default function SpriteSlicer() {
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) throw new Error("Could not get canvas context");
 
-      for (const rect of playableRects) {
+      const activeIndices = customOrder.filter(idx => !disabledIndices.has(idx));
+      for (let i = 0; i < playableRects.length; i++) {
+        const rect = playableRects[i];
+        const rectIndex = activeIndices[i];
+        const multiplier = frameDurations[rectIndex] || 1;
+        const currentDelay = animationSpeed * 1000 * multiplier;
+
         ctx.clearRect(0, 0, maxWidth, maxHeight);
         
         // If not transparent, fill background
@@ -1539,7 +1642,7 @@ export default function SpriteSlicer() {
         
         gif.writeFrame(index, maxWidth, maxHeight, { 
           palette, 
-          delay: animationSpeed * 1000, 
+          delay: currentDelay, 
           transparent: exportTransparent,
           dispose: 2 
         });
@@ -1567,6 +1670,8 @@ export default function SpriteSlicer() {
     const sanitized = e.target.value.replace(/[<>"/\\;]/g, '').slice(0, 32);
     setAnimationName(sanitized);
   };
+
+  const smallRectsCount = rects.filter(r => r.w < 10 || r.h < 10).length;
 
   return (
     <ErrorBoundary fallback={
@@ -2035,6 +2140,9 @@ export default function SpriteSlicer() {
                             const url = URL.createObjectURL(blob);
                             setImageSrc(url);
                             setRects([]); // Force redetection
+                            setCustomOrder([]);
+                            setDisabledIndices(new Set());
+                            setFrameDurations({});
                             setSelectedRectIndex(null);
                           }
                         });
@@ -2126,7 +2234,15 @@ export default function SpriteSlicer() {
 
           {/* Settings */}
           <div className="space-y-4">
-            <label className="block text-xs uppercase tracking-wider text-neutral-500">{t.settings}</label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs uppercase tracking-wider text-neutral-500">{t.settings}</label>
+              {smallRectsCount > 0 && (
+                <div className="flex items-center gap-1 text-amber-500 text-[10px] font-bold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20" title="Small rects found (width or height < 10px). They are highlighted in orange.">
+                  <AlertTriangle className="w-3 h-3" />
+                  {smallRectsCount} small
+                </div>
+              )}
+            </div>
             
             <div>
               <div className="flex justify-between mb-1">
@@ -2225,6 +2341,26 @@ export default function SpriteSlicer() {
                   <Scissors className="w-3 h-3 text-amber-500" />
                   {t.autoCrop}
                 </button>
+                {smallRectsCount > 0 && (
+                  <button 
+                    onClick={() => {
+                      pushToHistory();
+                      const next = new Set(disabledIndices);
+                      rects.forEach((r, i) => {
+                        if (r.w < 10 || r.h < 10) {
+                          next.delete(i); // Enable small rects
+                        } else {
+                          next.add(i); // Disable others
+                        }
+                      });
+                      setDisabledIndices(next);
+                    }}
+                    className="col-span-2 flex items-center justify-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 py-2 rounded text-[10px] font-bold transition-all border border-amber-500/20"
+                  >
+                    <AlertTriangle className="w-3 h-3" />
+                    {language === 'pt' ? `Selecionar Apenas Recortes Pequenos (${smallRectsCount})` : language === 'es' ? `Seleccionar Solo Recortes Pequeños (${smallRectsCount})` : `Select Only Small Rects (${smallRectsCount})`}
+                  </button>
+                )}
                 <button 
                   onClick={handleRemoveDisabled}
                   className="col-span-2 flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-white py-2 rounded text-[10px] font-bold transition-all border border-neutral-700"
@@ -2608,7 +2744,15 @@ export default function SpriteSlicer() {
         </div>
 
         <div className="p-4 space-y-4 border-b border-neutral-800">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-2">
+              <button 
+                onClick={() => setCurrentFrame(prev => prev > 0 ? prev - 1 : playableRects.length - 1)}
+                className="p-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl transition-colors disabled:opacity-50"
+                disabled={playableRects.length === 0}
+                title={t.prevFrame}
+              >
+                <SkipBack className="w-5 h-5" />
+              </button>
               <button 
                 onClick={() => setIsPlaying(!isPlaying)}
                 className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black px-6 py-3 rounded-xl font-bold transition-colors shadow-lg shadow-emerald-900/20"
@@ -2617,10 +2761,58 @@ export default function SpriteSlicer() {
                 {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                 {isPlaying ? t.pause : t.play}
               </button>
-              <div className="text-xs text-neutral-400 bg-neutral-950 px-3 py-2 rounded-lg border border-neutral-800">
+              <button 
+                onClick={() => setCurrentFrame(prev => (prev + 1) % playableRects.length)}
+                className="p-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl transition-colors disabled:opacity-50"
+                disabled={playableRects.length === 0}
+                title={t.nextFrame}
+              >
+                <SkipForward className="w-5 h-5" />
+              </button>
+              <div className="text-xs text-neutral-400 bg-neutral-950 px-3 py-2 rounded-lg border border-neutral-800 whitespace-nowrap">
                 {playableRects.length > 0 ? currentFrame + 1 : 0} / {playableRects.length}
               </div>
             </div>
+
+          {playableRects.length > 0 && (
+            <div className="flex items-center justify-between bg-neutral-900 p-3 rounded-lg border border-neutral-800">
+              <div className="flex flex-col">
+                <span className="text-xs text-neutral-400">{t.frameDuration}</span>
+                <span className="text-[10px] text-neutral-500">
+                  {((frameDurations[customOrder.filter(idx => !disabledIndices.has(idx))[currentFrame]] || 1) * animationSpeed).toFixed(2)}s
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => {
+                    const rectIndex = customOrder.filter(idx => !disabledIndices.has(idx))[currentFrame];
+                    const currentMult = frameDurations[rectIndex] || 1;
+                    if (currentMult > 0.5) {
+                      setFrameDurations(prev => ({ ...prev, [rectIndex]: currentMult - 0.5 }));
+                      pushToHistory();
+                    }
+                  }}
+                  className="w-6 h-6 flex items-center justify-center bg-neutral-800 hover:bg-neutral-700 rounded text-neutral-300"
+                >
+                  -
+                </button>
+                <span className="text-sm font-bold w-8 text-center">
+                  {frameDurations[customOrder.filter(idx => !disabledIndices.has(idx))[currentFrame]] || 1}x
+                </span>
+                <button 
+                  onClick={() => {
+                    const rectIndex = customOrder.filter(idx => !disabledIndices.has(idx))[currentFrame];
+                    const currentMult = frameDurations[rectIndex] || 1;
+                    setFrameDurations(prev => ({ ...prev, [rectIndex]: currentMult + 0.5 }));
+                    pushToHistory();
+                  }}
+                  className="w-6 h-6 flex items-center justify-center bg-neutral-800 hover:bg-neutral-700 rounded text-neutral-300"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="flex justify-between text-xs mb-1">
