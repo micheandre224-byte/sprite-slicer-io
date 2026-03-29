@@ -1,4 +1,4 @@
-# 🚀 Slicer.io - Sprite Slicer & VFX Animation Tool
+# 🚀 Slicer.io - Sprite Slicer
 
 ![Slicer.io Beta](https://img.shields.io/badge/Status-BETA-amber)
 ![License](https://img.shields.io/badge/License-MIT-emerald)
@@ -66,3 +66,6 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 Criada com ⚡ por **Michel André L. Da Silva** com o apoio da **IA Gemini**.
 *Objetivo: Tornar a criação de animações baseadas em Sprites e Frames mais simples e acessível para todos.*
+
+**Acesse a ferramenta:** [Slicer.io](https://ais-pre-6mcjunedilc3ifswrkn2zp-514173459659.us-east1.run.app)
+
