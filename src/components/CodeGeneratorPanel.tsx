@@ -180,9 +180,14 @@ export const CodeGeneratorPanel: React.FC = () => {
         {/* Right Panel: Code Preview */}
         <div className="w-full md:w-2/3 flex flex-col bg-[#1e1e1e] min-h-[500px] md:min-h-0">
           <div className="flex justify-between items-center p-2 bg-[#2d2d2d] border-b border-gray-800">
-            <span className="text-xs text-gray-400 font-mono px-2">
-              {actionType.charAt(0).toUpperCase() + actionType.slice(1)}Action3D.cs
-            </span>
+            <div className="flex items-center gap-2 px-2">
+              <span className="text-xs text-gray-400 font-mono">
+                {actionType.charAt(0).toUpperCase() + actionType.slice(1)}Action3D.cs
+              </span>
+              <span className="bg-gray-700/50 text-gray-400 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider border border-gray-600/50" title="Você pode editar o código diretamente aqui">
+                Editável
+              </span>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={handleCopy}
@@ -200,10 +205,13 @@ export const CodeGeneratorPanel: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-auto p-4">
-            <pre className="text-sm font-mono text-gray-300 whitespace-pre-wrap">
-              <code>{code}</code>
-            </pre>
+          <div className="flex-1 relative">
+            <textarea
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              spellCheck={false}
+              className="absolute inset-0 w-full h-full p-4 bg-transparent text-sm font-mono text-gray-300 resize-none outline-none focus:ring-1 focus:ring-emerald-500/50"
+            />
           </div>
         </div>
       </div>

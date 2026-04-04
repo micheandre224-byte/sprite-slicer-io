@@ -33,12 +33,6 @@ export default function App() {
             >
               Studio
             </button>
-            <button 
-              onClick={() => setActiveTab('generator')}
-              className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${activeTab === 'generator' ? 'bg-emerald-500/20 text-emerald-500' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'}`}
-            >
-              Gerador 3D
-            </button>
           </nav>
         </header>
 
@@ -46,11 +40,6 @@ export default function App() {
         <main className="flex-1 overflow-y-auto relative custom-scrollbar">
           {activeTab === 'slicer' && <SpriteSlicer />}
           {activeTab === 'studio' && <Studio />}
-          {activeTab === 'generator' && (
-            <div className="h-full p-2 md:p-6">
-              <CodeGeneratorPanel />
-            </div>
-          )}
         </main>
       </div>
     </ErrorBoundary>
