@@ -1784,7 +1784,7 @@ export default function SpriteSlicer() {
 
   return (
     <div 
-      className={`flex flex-col lg:flex-row h-screen overflow-hidden bg-neutral-950 text-neutral-300 font-mono text-sm transition-all duration-300 ${isDraggingFile ? 'scale-[0.98] ring-4 ring-emerald-500 ring-inset' : ''}`}
+      className={`flex flex-col lg:flex-row h-full overflow-hidden bg-neutral-950 text-neutral-300 font-mono text-sm transition-all duration-300 ${isDraggingFile ? 'scale-[0.98] ring-4 ring-emerald-500 ring-inset' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

@@ -243,6 +243,7 @@ export const translations = {
     typeRoll: "Spindash / Rolling",
     typeAttack: "Attack / Punch",
     typeHurt: "Damage / Hurt",
+    typeEffect: "Effect / VFX",
     typeCustom: "Other (Custom)",
     rowName: "Row Name (JSON)",
     characterName: "Character Name",
