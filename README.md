@@ -1,4 +1,4 @@
-# 🚀 Slicer.io - Sprite Slicer & 3D Action Generator
+# 🚀 Slicer.io - Advanced Sprite Slicer & 2D Fighting Game Studio
 
 ![Slicer.io Beta](https://img.shields.io/badge/Status-BETA-amber)
 ![License](https://img.shields.io/badge/License-MIT-emerald)
@@ -6,66 +6,58 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat&logo=tailwind-css&logoColor=white)
 
-**Slicer.io** é uma ferramenta de alta performance baseada em navegador, projetada para desenvolvedores de jogos e artistas de pixel. Ela simplifica o processo de recortar folhas de sprites, converter vídeos em frames e configurar animações complexas, além de agora incluir suporte para geração de scripts de ação 3D para Unity.
+**Slicer.io** é uma poderosa ferramenta web de alta performance desenhada para desenvolvedores indies, focada em tornar a animação fluida para jogos 2D/3D (MUGEN, Unity, Godot) uma experiência acessível e espetacular. Transforme recursos visuais (vídeos, GIFs, estáticos) em Data Sheets compactos e completos em questão de segundos. 
 
 ---
 
-## ✨ Funcionalidades Principais
+## ✨ Funcionalidades Principais (Atualizado 2026)
 
-### 🎞️ Modo Sprite (Estável)
-O coração do Slicer.io. Transforme vídeos curtos (5 a 30 segundos) em folhas de sprites prontas para uso.
-- **Como funciona:** O usuário faz upload de um vídeo, e o Slicer.io processa automaticamente, extraindo os frames e convertendo-os em um Sprite Sheet otimizado com transparência preservada.
-- **Detecção Inteligente:** Algoritmo avançado de análise de pixels para identificar e recortar sprites automaticamente.
-- **Exportação:** JSON Metadata pronto para motores como Unity, Godot ou Construct.
+### 🎞️ Visão Média: Importação Universal & Sprite Editor
+Transforme o bruto em utilizável com nosso extrator via Browser.
+- **Suporte Multimídia Absoluto:** Importar imagens estáticas, Gifs densos ou converter Vídeos em MP4 de 5-30s com extração a Frame Completo `(A tela pode piscar durante extrações de vídeo pesado, isso não afetará o framerate na exportação!)`.
+- **Janelas Mescladas (Multi-Cropping):** Exporte a limpeza do background recortando vários segmentos da imagem original e unificando como um novo Canvas mestre.
+- **Algoritmo Auto-Detect:** Detecta recortes perfeitamente sem input manual com ignorar fundo, keyframes, unindo pedaços flutuantes via Threshold (`Merge Distance`).
+- **Clean e Refine:** Tolerância em tempo real à chroma-key (verdes, brancos) ou supressões manuais.
 
-### 🎮 Modo 3D & Gerador de Scripts (Híbrido) [BETA 🚧]
-Focado em gerar e **personalizar** scripts C# profissionais para Unity utilizando Inteligência Artificial.
+### ⚔️ Evolution Studio (Combat Arena & Hitboxes)
+O maior pulo tecnológico: O seu editor de Combate que fica totalmente visível!
+- **Studio de Organização por Linha:** Suas imagens são cortadas logicamente e ordenadas horizontalmente. Cada linha agora carrega uma inteligência de Move Action (p.ex., Ataque Especial).
+- **Editor de Colisões Interativo (Caixas de Combate):** Abra qualquer frame individual do seu "Soco" e arraste retângulos com o cursor. Defina **Hitboxes** (vermelhos - onde hita) e **Hurtboxes** (verdes - corpo defensivo do jogador) isoladamente. Totalmente suportado pela exportação de Metadata JSON.
+- **Configurador de Ações (Attack/Idle/Move/Damage):** Atrele configurações detalhadas para o input key (ex: `J`, `W`), velocidade escalar, Pivôs nativos e quadros-gatilho de Porrada/Dano.
 
-- **Status:** Beta. A geração e personalização de scripts é totalmente suportada em C# (Unity). Suporte para JavaScript (Three.js) está em fase de testes.
-- **Nova Geração com IA (Gemini API):** O gerador agora utiliza o modelo **Gemini 3.1 Flash** via API. Isso garante respostas instantâneas, personalização inteligente através de linguagem natural e **zero consumo de memória** no seu dispositivo (ideal para uso mobile!).
-- **Objetivo:** Facilitar a criação de controladores de personagens 3D robustos, permitindo que você peça alterações no código como "Mude a tecla de corrida para RightCtrl" e a IA faça o trabalho pesado.
+### 🎮 Arena Sandbox Ao Vivo
+Não baixe para testar se ficou fluido.
+- Teste e pressione as teclas do mapeamento diretamente pro motor. A UI inclui feedbacks de Tela de Impacto (Screen Shakes, Flashes Brancos, Exibição de hit de `Dano -99` Flutuante em Canvas), mais Som SFX Integrado das Porradas (`POW!` Retro ou Espadas). Tudo simulando a sensação em runtime do Game-Loop!
 
----
+### 📦 Motor de Exportação Unificado
+Traga a extração de forma isolada sem sobrecarga técnica.
+- **Modularidade de Linhas:** Exportar a classe "Hit 2" numa varredura Isolada no `.ZIP` se você não quis mexer nos frames dos outros attacks.
+- **JSON + C# Controller nativo:** O Zip global manda a Unity um C# MonoBehavior Player Controller que sabe automaticamente onde suas animações Hitboxes e Quadros chaves atrelados às teclas do web param de tocar. 
 
-## 🛠️ Biblioteca de Scripts Base (Modo 3D)
-
-Nossa IA utiliza uma biblioteca de scripts C# profissionais como base para personalização, todos com foco em performance e boas práticas:
-
-- **WalkAction3D:** Movimentação base sólida.
-- **JumpAction3D:** Pulo com física correta, gravidade e estados de animação (`isJumping`/`isFalling`).
-- **CrouchAction3D:** Agachamento com ajuste dinâmico de collider.
-- **DamageAction3D:** Sistema de vida completo com `TakeDamage` e proteção de HP.
-- **AttackAction3D:** Ataque com cooldown configurável e dano.
-- **VFXScenarioAction3D:** Efeitos visuais otimizados com gerenciamento de memória (`Destroy`).
-
-*Todos os scripts incluem `[RequireComponent(typeof(Animator))]` e `Debug.LogWarning` para facilitar o uso no Inspector.*
+### 🤖 Modo 3D & Gerador Auxiliar (Cloud AI - Gemini API)
+Nossa aba de auxílio geracional:
+- Integrada ao Modelador **Gemini 3.1 Flash API Server-Side**! Zero lags, zero crashes do WASM Transformer no mobile, totalmente via Rest Call na Nuvem! Você pode solicitar que o Gemini re-escreva `WalkAction3D` para adicionar `Dash-Mecânico`, mantendo suas regras de jogo intactas instantaneamente na interface de Código!
 
 ---
 
-## 🚀 Como Usar
-### Modo Sprite
-1. **Upload:** Arraste uma imagem ou um vídeo curto (5-30s).
-2. **Recorte:** Use o botão "Auto-Detectar Sprites" ou a ferramenta de "Corte Manual".
-3. **Refine:** Ajuste a "Tolerância" para ignorar marcas d'água ou ruídos.
-4. **Configure:** Defina o tipo de animação e o nome da linha.
-5. **Preview:** Ative o "VFX Mode" se estiver trabalhando com efeitos.
-6. **Exportar:** Baixe o JSON ou o GIF final.
+## 🚀 Como Usar Rapidamente
 
-### Modo Gerador 3D (Beta)
-1. **Escolha o Script:** Selecione a ação base que deseja (ex: WalkAction3D).
-2. **Personalize:** Digite o que deseja alterar no código (ex: "Adicione um pulo duplo").
-3. **Gere com IA:** Clique em "Personalizar com IA" e aguarde a mágica do Gemini.
-4. **Copie ou Baixe:** Copie o código gerado ou baixe diretamente o arquivo `.cs`.
+1. **Upload:** Arraste e Solte os Gifs ou clipes MP4 de captura. 
+2. **Crop & Merge:** Na preview, trace caixas nos sprite sheets visíveis nas rebarbas da tela, feche e pressione "Concluir Recortes" (ideal pra rips com muito HUD em volta).
+3. **Deteção Automatizada:** Limpe o background `(Pipeta no verde -> Tolerancia 8%)` e ative *Auto-Detect*.
+4. **Ative o [STUDIO - Combat Mode]:** Ajuste os pivôs (ex: Bottom Center), reordene linhas de acões, desenhe Hurtboxes sobre os quadros onde o punho acerta no mini Editor, atribua a tecla SPACE àquela Linha.
+5. **Combate Simulativo:** Abra Arena Sandbox e pressione Space. Sinta o impacto na engine do navegador!
+6. **Exportar Projeto Global:** Faça o download ZIP para obter a Folha Compactada (.png) e O Metadata File (.json) com `Hurtboxes/Hitboxes/Tempos de Cada frame`.
 
 ---
 
-## 📄 Licença
+## 📄 Informações de Desenvolvimento
 
-Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
+Este projeto está construído modularmente no universo React / Vite e está licenciado sob MIT - veja o arquivo [LICENSE](LICENSE). O App inteiro é PWA Híbrido, garantindo Layout responsivo de telas esticadas (1440p) a compactos celulares para usar até mesmo no iOS.
 
 ---
 
-Criada com ⚡ por **Michel André L. Da Silva** com o apoio da **IA Gemini**.
-*Objetivo: Tornar a criação de animações baseadas em Sprites e Frames mais simples e acessível para todos.*
+Criada com ⚡ por **Michel André L. Da Silva** e **Agente AI Google DeepMind**.  
+*Objetivo Definitivo: Transformar a burocracia do M.U.G.E.N / Unity Sprites Tool em um parque de diversões fluido onde desenhar frames não seja tortura técnica.*
 
-**Acesse a ferramenta:** [Slicer.io](https://ais-pre-6mcjunedilc3ifswrkn2zp-514173459659.us-east1.run.app)
+👉 **Acesse:** [Slicer.io (Preview Deploy)](https://ais-pre-6mcjunedilc3ifswrkn2zp-514173459659.us-east1.run.app)

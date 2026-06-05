@@ -34,6 +34,7 @@ export const translations = {
     fps: "FPS",
     frames: "Frames",
     exportGif: "Exportar GIF",
+    exportZip: "Exportar Frames (ZIP)",
     exportSpritesheet: "Exportar Spritesheet (Atlas)",
     exportMetadata: "Exportar Metadados (JSON)",
     autoCrop: "Auto-Recortar Sprites",
@@ -105,7 +106,11 @@ export const translations = {
       },
       step1: {
         title: "1. Carregue seu Arquivo",
-        content: "Use o painel lateral para enviar uma imagem ou vídeo de 5 a 30 segundos."
+        content: "Use o painel lateral para enviar uma imagem, GIF ou vídeo de 5 a 30 segundos."
+      },
+      stepVideo: {
+        title: "🎬 Aviso sobre Vídeos",
+        content: "A tela de visualização pode piscar ao reproduzir vídeos importados. Não se preocupe! Ao exportar, o resultado final rodará perfeitamente normal, seja em pixel art ou não."
       },
       step2: {
         title: "2. Detecção Automática",
@@ -127,6 +132,10 @@ export const translations = {
       step5: {
         title: "5. Refine e Divida",
         content: "Clique em um sprite para abrir opções de divisão ou refinamento."
+      },
+      stepArena: {
+        title: "⚔️ Studio e Arena",
+        content: "Organize seus frames em diferentes 'Ações' (linhas) e teste os movimentos ao vivo no novo painel de Arena de Combate!"
       },
       step6: {
         title: "6. Exportação",
@@ -177,7 +186,15 @@ export const translations = {
     frameDuration: "Duração do Frame",
     multiplier: "Multiplicador",
     prevFrame: "Frame Anterior",
-    nextFrame: "Próximo Frame"
+    nextFrame: "Próximo Frame",
+    selectFrames: "Selecionar Frames",
+    selectFramesDesc: "Escolha os frames que deseja incluir na sua sprite sheet. Desmarque os que não quiser.",
+    confirmSelection: "Confirmar Seleção ({n} frames)",
+    selectAllFrames: "Selecionar Tudo",
+    deselectAllFrames: "Desmarcar Tudo",
+    export: "Exportar",
+    movesetSpeed: "Velocidade do Moveset",
+    speedMultiplier: "Multiplicador de Velocidade",
   },
   en: {
     title: "Sprite Slicer",
@@ -212,6 +229,7 @@ export const translations = {
     fps: "FPS",
     frames: "Frames",
     exportGif: "Export GIF",
+    exportZip: "Export Frames (ZIP)",
     exportSpritesheet: "Export Spritesheet (Atlas)",
     exportMetadata: "Export Metadata (JSON)",
     autoCrop: "Auto-Crop Sprites",
@@ -283,7 +301,11 @@ export const translations = {
       },
       step1: {
         title: "1. Upload your File",
-        content: "Use the sidebar to upload an image or video (5-30s)."
+        content: "Use the sidebar to upload an image, GIF, or video (5-30s)."
+      },
+      stepVideo: {
+        title: "🎬 Video Warning",
+        content: "The preview screen might flicker when playing imported videos. Don't worry! When exported, the final result will run perfectly normal, whether it's pixel art or not."
       },
       step2: {
         title: "2. Auto Detection",
@@ -305,6 +327,10 @@ export const translations = {
       step5: {
         title: "5. Refine and Split",
         content: "Click a sprite to open split or refinement options."
+      },
+      stepArena: {
+        title: "⚔️ Studio & Arena",
+        content: "Organize your frames into different 'Actions' (rows) and test the moves live in the new Combat Arena panel!"
       },
       step6: {
         title: "6. Export",
@@ -355,7 +381,15 @@ export const translations = {
     frameDuration: "Frame Duration",
     multiplier: "Multiplier",
     prevFrame: "Previous Frame",
-    nextFrame: "Next Frame"
+    nextFrame: "Next Frame",
+    selectFrames: "Select Frames",
+    selectFramesDesc: "Choose the frames you want to include in your sprite sheet. Uncheck those you don't want.",
+    confirmSelection: "Confirm Selection ({n} frames)",
+    selectAllFrames: "Select All",
+    deselectAllFrames: "Deselect All",
+    export: "Export",
+    movesetSpeed: "Moveset Speed",
+    speedMultiplier: "Speed Multiplier",
   },
   es: {
     title: "Sprite Slicer",
@@ -390,6 +424,7 @@ export const translations = {
     fps: "FPS",
     frames: "Fotogramas",
     exportGif: "Exportar GIF",
+    exportZip: "Exportar Fotogramas (ZIP)",
     exportSpritesheet: "Exportar Spritesheet (Atlas)",
     exportMetadata: "Exportar Metadatos (JSON)",
     autoCrop: "Auto-Recortar Sprites",
@@ -461,7 +496,11 @@ export const translations = {
       },
       step1: {
         title: "1. Sube tu Archivo",
-        content: "Usa el panel lateral para subir una imagen o video (5-30s)."
+        content: "Usa el panel lateral para subir una imagen, GIF o video (5-30s)."
+      },
+      stepVideo: {
+        title: "🎬 Aviso sobre Videos",
+        content: "La pantalla de vista previa puede parpadear al reproducir videos importados. ¡No te preocupes! Al exportar, el resultado final se verá perfectamente normal, ya sea pixel art o no."
       },
       step2: {
         title: "2. Detección Automática",
@@ -483,6 +522,10 @@ export const translations = {
       step5: {
         title: "5. Refina y Divide",
         content: "Haz clic en un sprite para abrir opciones de división o refinamiento."
+      },
+      stepArena: {
+        title: "⚔️ Studio y Arena",
+        content: "¡Organiza tus fotogramas en diferentes 'Acciones' (filas) y prueba los movimientos en vivo en el nuevo panel de Arena de Combate!"
       },
       step6: {
         title: "6. Exportación",
@@ -533,6 +576,14 @@ export const translations = {
     frameDuration: "Duración del Fotograma",
     multiplier: "Multiplicador",
     prevFrame: "Fotograma Anterior",
-    nextFrame: "Siguiente Fotograma"
+    nextFrame: "Siguiente Fotograma",
+    selectFrames: "Seleccionar Fotogramas",
+    selectFramesDesc: "Elige los fotogramas que quieras incluir en tu sprite sheet. Desmarca los que no quieras.",
+    confirmSelection: "Confirmar Selección ({n} fotogramas)",
+    selectAllFrames: "Seleccionar Todo",
+    deselectAllFrames: "Desmarcar Todo",
+    export: "Exportar",
+    movesetSpeed: "Velocidad del Moveset",
+    speedMultiplier: "Multiplicador de Velocidad",
   }
 };

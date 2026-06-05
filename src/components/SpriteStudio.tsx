@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Download, AlertTriangle, CheckCircle2, FileJson, RefreshCw, Upload, Image as ImageIcon, ArrowRight, HelpCircle, X } from 'lucide-react';
+import { Play, Pause, Download, AlertTriangle, CheckCircle2, FileJson, RefreshCw, Upload, Image as ImageIcon, ArrowRight, HelpCircle, X, Archive, FileImage } from 'lucide-react';
+import JSZip from 'jszip';
 
 interface LoopConfig {
   enabled: boolean;
@@ -24,6 +25,8 @@ export default function SpriteStudio() {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null);
   
+  const [mobileTab, setMobileTab] = useState<'editor' | 'preview'>('preview');
+
   // Loop State
   const [loopEnabled, setLoopEnabled] = useState(false);
   const [startFrame, setStartFrame] = useState(0);
@@ -54,14 +57,14 @@ export default function SpriteStudio() {
   const tutorialSteps = [
     {
       target: 'tutorial-json-upload',
-      title: 'Carregar JSON',
-      content: 'Primeiro, cole aqui o JSON gerado pelo Slicer.io ou faça upload do arquivo.',
+      title: 'Carregar Atlas / JSON',
+      content: 'Faça o upload do arquivo .zip gerado no modo Atlas, ou de um .json isolado.',
       position: 'bottom'
     },
     {
       target: 'tutorial-image-upload',
       title: 'Carregar Imagem',
-      content: 'Em seguida, selecione a imagem (spritesheet) correspondente para que a animação possa acontecer.',
+      content: 'Se você enviou um .json isolado, selecione a imagem (spritesheet) correspondente aqui.',
       position: 'bottom'
     },
     {
@@ -181,6 +184,47 @@ export default function SpriteStudio() {
   };
 
   // Handlers for File Uploads
+  const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const zip = new JSZip();
+      const zipContent = await zip.loadAsync(file);
+      
+      let foundJson = false;
+      let foundImage = false;
+
+      // Extract contents
+      for (const [filename, fileData] of Object.entries(zipContent.files)) {
+        if (fileData.dir || filename.includes('__MACOSX') || filename.startsWith('.')) continue;
+        
+        if (filename.endsWith('.json') && !foundJson) {
+          const content = await fileData.async('string');
+          setJsonInput(content);
+          foundJson = true;
+        } else if ((filename.endsWith('.png') || filename.endsWith('.jpg') || filename.endsWith('.gif')) && !foundImage) {
+          const type = filename.endsWith('.png') ? 'image/png' : filename.endsWith('.jpg') ? 'image/jpeg' : 'image/gif';
+          const arrayBuffer = await fileData.async('arraybuffer');
+          const blob = new Blob([arrayBuffer], { type });
+          const url = URL.createObjectURL(blob);
+          setImageSrc(url);
+          const img = new Image();
+          img.onload = () => setImageElement(img);
+          img.src = url;
+          foundImage = true;
+        }
+      }
+
+      if (!foundJson && !foundImage) {
+        setJsonError('No valid .json or image found in the ZIP.');
+      }
+    } catch (e) {
+      setJsonError('Failed to parse ZIP file.');
+      console.error(e);
+    }
+  };
+
   const handleJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -362,25 +406,34 @@ export default function SpriteStudio() {
   }
 
   return (
-    <div className="flex flex-col h-full w-full gap-4 p-4 overflow-hidden">
+    <div className="flex flex-col h-full w-full gap-4 p-4 lg:p-4 pb-20 lg:pb-4 overflow-hidden relative">
       
       {/* Top Bar for Uploads */}
       <div className="flex-none bg-neutral-900 border border-neutral-800 rounded-2xl p-4 flex flex-wrap items-center gap-4 relative">
-        <label id="tutorial-json-upload" className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all cursor-pointer shadow-lg shadow-emerald-900/20">
-          <FileJson className="w-5 h-5" />
-          Carregar JSON
+        <label id="tutorial-json-upload" className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold transition-all cursor-pointer shadow-lg shadow-amber-900/20">
+          <Archive className="w-5 h-5" />
+          Carregar Atlas (.zip)
+          <input type="file" accept=".zip" className="hidden" onChange={handleZipUpload} />
+        </label>
+        
+        <div className="h-8 w-px bg-neutral-800 mx-2 hidden sm:block"></div>
+        
+        <label className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl font-bold transition-all cursor-pointer text-sm">
+          <FileJson className="w-4 h-4 text-emerald-400" />
+          JSON isolado
           <input type="file" accept=".json" className="hidden" onChange={handleJsonUpload} />
         </label>
-        <label id="tutorial-image-upload" className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all cursor-pointer shadow-lg shadow-blue-900/20">
-          <ImageIcon className="w-5 h-5" />
-          Carregar Imagem
+        
+        <label id="tutorial-image-upload" className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl font-bold transition-all cursor-pointer text-sm">
+          <FileImage className="w-4 h-4 text-blue-400" />
+          Imagem isolada
           <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
         </label>
         
-        {imageSrc && (
+        {(imageSrc || parsedData) && (
           <div className="flex items-center gap-2 text-xs text-neutral-400 ml-auto mr-12">
             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            Imagem carregada
+            {imageSrc && parsedData ? 'Atlas Carregado' : (imageSrc ? 'Imagem Carregada' : 'JSON Carregado')}
           </div>
         )}
         
@@ -396,7 +449,7 @@ export default function SpriteStudio() {
       <div className="flex flex-col lg:flex-row flex-1 gap-4 overflow-hidden">
         
         {/* Left Column: JSON Editor */}
-        <div className="flex-1 flex flex-col bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden min-w-[300px]">
+        <div className={`flex-1 flex-col bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden min-w-[300px] ${mobileTab === 'editor' ? 'flex max-h-full' : 'hidden lg:flex'}`}>
         <div className="h-12 border-b border-neutral-800 bg-neutral-950/50 flex items-center justify-between px-4">
           <div className="flex items-center gap-2 text-emerald-500 font-bold">
             <FileJson className="w-4 h-4" />
@@ -438,7 +491,7 @@ export default function SpriteStudio() {
       </div>
 
       {/* Right Column: Loop Editor & Preview */}
-      <div className="w-full lg:w-[400px] xl:w-[500px] flex flex-col gap-4">
+      <div className={`w-full lg:w-[400px] xl:w-[500px] flex-col gap-4 overflow-y-auto ${mobileTab === 'preview' ? 'flex max-h-full' : 'hidden lg:flex'}`}>
         
         {/* Preview Area */}
         <div id="tutorial-preview" className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 flex flex-col h-[300px]">
@@ -485,17 +538,37 @@ export default function SpriteStudio() {
               <div className="text-center flex flex-col items-center justify-center w-full h-full">
                 {imageSrc && rect ? (
                   <div className="relative flex items-center justify-center flex-1 w-full h-full">
-                    <div 
-                      style={{
-                        width: rect.w,
-                        height: rect.h,
-                        backgroundImage: `url(${imageSrc})`,
-                        backgroundPosition: `-${rect.x}px -${rect.y}px`,
-                        backgroundRepeat: 'no-repeat',
-                        transform: 'scale(2)',
-                        imageRendering: 'pixelated'
-                      }}
-                    />
+                    {rect.pivotX !== undefined && rect.pivotY !== undefined ? (
+                      <div 
+                        style={{
+                          position: 'absolute',
+                          left: '50%',
+                          top: '50%',
+                          width: rect.w,
+                          height: rect.h,
+                          marginLeft: `-${rect.pivotX * 2}px`,
+                          marginTop: `-${rect.pivotY * 2}px`,
+                          backgroundImage: `url("${imageSrc}")`,
+                          backgroundPosition: `-${rect.x}px -${rect.y}px`,
+                          backgroundRepeat: 'no-repeat',
+                          transform: 'scale(2)',
+                          transformOrigin: 'top left',
+                          imageRendering: 'pixelated'
+                        }}
+                      />
+                    ) : (
+                      <div 
+                        style={{
+                          width: rect.w,
+                          height: rect.h,
+                          backgroundImage: `url("${imageSrc}")`,
+                          backgroundPosition: `-${rect.x}px -${rect.y}px`,
+                          backgroundRepeat: 'no-repeat',
+                          transform: 'scale(2)',
+                          imageRendering: 'pixelated'
+                        }}
+                      />
+                    )}
                   </div>
                 ) : (
                   <div className="text-6xl font-bold text-neutral-700 mb-2">
@@ -728,6 +801,24 @@ export default function SpriteStudio() {
         })}
       </div>
     )}
+
+      {/* Mobile Navigation Bar */}
+      <div className="lg:hidden flex border-t border-neutral-800 bg-neutral-900 absolute bottom-0 left-0 right-0 z-40 h-16 pointer-events-auto shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+        <button 
+          onClick={() => setMobileTab('editor')}
+          className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${mobileTab === 'editor' ? 'text-emerald-500' : 'text-neutral-500 hover:text-neutral-300'}`}
+        >
+          <FileJson className="w-5 h-5" />
+          <span className="text-[10px] uppercase font-bold">Editor JSON</span>
+        </button>
+        <button 
+          onClick={() => setMobileTab('preview')}
+          className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${mobileTab === 'preview' ? 'text-emerald-500' : 'text-neutral-500 hover:text-neutral-300'}`}
+        >
+          <Play className="w-5 h-5" />
+          <span className="text-[10px] uppercase font-bold">Preview</span>
+        </button>
+      </div>
     </div>
   );
 }
